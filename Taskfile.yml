@@ -3,7 +3,9 @@ version: "3"
 vars:
   BUILD_SITE_DIR: target/build
   BUILD_DIR: target
-  CONTENT_DIR: content/markdown
+  CONTENT_DIR: content
+  MARKDOWN_DIR: content/markdown
+  IMAGES_DIR: content/assets/images
   GOLANGCI_LINT_VERSION: v2.8.0
   TAILWIND_VERSION: v4.0.6
 
@@ -72,7 +74,8 @@ tasks:
   fmt:check:
     desc: Check if Go files are formatted
     cmds:
-      - test -z "$(gofmt -l .)" || (echo "Files not formatted:" && gofmt -l . && exit 1)
+      - test -z "$(gofmt -l .)" || (echo "Files not formatted:" && gofmt -l . &&
+        exit 1)
 
   lint:
     desc: Run golangci-lint (skipped if not installed)
@@ -99,7 +102,8 @@ tasks:
     desc: Generate HTML coverage report
     cmds:
       - go test ./... -coverprofile={{.BUILD_DIR}}/coverage.out
-      - go tool cover -html={{.BUILD_DIR}}/coverage.out -o {{.BUILD_DIR}}/coverage.html
+      - go tool cover -html={{.BUILD_DIR}}/coverage.out -o
+        {{.BUILD_DIR}}/coverage.html
       - echo "Coverage report generated at {{.BUILD_DIR}}/coverage.html"
 
   test:unit:
@@ -113,27 +117,46 @@ tasks:
       - go test -run "TestSiteGeneration|TestLinksAreValid|TestMarkdownFiles" .
 
   build:
-    desc: Build the binary
+    desc: Build the Go binary
+    sources:
+      - go.mod
+      - go.sum
+      - main.go
+      - ./internal/**/*.go
+    generates:
+      - "{{.BUILD_DIR}}/bin/blog"
     cmds:
       - mkdir -p {{.BUILD_DIR}}/bin
-      - go build -o {{.BUILD_DIR}}/bin/
+      - go build -o {{.BUILD_DIR}}/bin/blog
 
   generate:
     desc: Generate the static site
+    deps:
+      - build
+      - css:build
+    sources:
+      - "./{{.BUILD_DIR}}/bin/blog"
+      - "{{.MARKDOWN_DIR}}/**/*.md"
+      - "{{.IMAGES_DIR}}/**/*.png"
+      - "{{.IMAGES_DIR}}/**/*.jpg"
+      - "{{.IMAGES_DIR}}/**/*.jpeg"
+      - "{{.IMAGES_DIR}}/**/*.gif"
+      - "{{.IMAGES_DIR}}/**/*.svg"
+      - "{{.IMAGES_DIR}}/**/*.webp"
+      - "{{.IMAGES_DIR}}/**/*.ico"
+      - "{{.IMAGES_DIR}}/**/*.avif"
     cmds:
-      - rm -rf {{.BUILD_SITE_DIR}}
-      - go run .
-      - task: css:build
+      - ./{{.BUILD_DIR}}/bin/blog
 
   css:build:
     desc: Build Tailwind CSS
+    sources:
+      - styles/input.css
+    generates:
+      - "{{.BUILD_SITE_DIR}}/styles.css"
     cmds:
-      - ./{{.BUILD_DIR}}/bin/tailwindcss -i ./styles/input.css -o ./{{.BUILD_SITE_DIR}}/styles.css --minify
-
-  css:watch:
-    desc: Watch and rebuild Tailwind CSS
-    cmds:
-      - ./{{.BUILD_DIR}}/bin/tailwindcss -i ./styles/input.css -o ./{{.BUILD_SITE_DIR}}/styles.css --watch
+      - ./{{.BUILD_DIR}}/bin/tailwindcss -i ./styles/input.css -o
+        ./{{.BUILD_SITE_DIR}}/styles.css --minify
 
   clean:
     desc: Remove build artifacts
@@ -141,36 +164,14 @@ tasks:
       - rm -rf {{.BUILD_DIR}}
 
   dev:
-    desc: Run generate and serve locally
-    deps: [generate]
-    cmds:
-      - echo "Serving at http://localhost:8080"
-      - cd {{.BUILD_SITE_DIR}} && python3 -m http.server 8080
-
-  dev:watch:
-    desc: Serve locally with live reload (requires browser-sync and fswatch)
+    desc: Serve locally with live reload
+    watch: true
+    deps:
+      - task: generate
     cmds:
       - |
-        if ! command -v browser-sync &> /dev/null; then
-          echo "browser-sync not installed. Install with: npm install -g browser-sync"
-          exit 1
+        if ! pgrep -f "browser-sync" > /dev/null; then
+          browser-sync start --server {{.BUILD_SITE_DIR}} --watch &
+          BROWSER_SYNC_PID=$!
+          trap "kill $BROWSER_SYNC_PID 2>/dev/null" EXIT
         fi
-        if ! command -v fswatch &> /dev/null; then
-          echo "fswatch not installed. Install with: brew install fswatch"
-          exit 1
-        fi
-        task generate
-        echo "Starting browser-sync with live reload..."
-        browser-sync start --server {{.BUILD_SITE_DIR}} --watch &
-        BROWSER_SYNC_PID=$!
-        trap "kill $BROWSER_SYNC_PID 2>/dev/null" EXIT
-        sleep 2
-        echo "Watching for changes in {{.CONTENT_DIR}}, internal, models, styles, tailwind.config.js..."
-        while true; do
-          fswatch -1 {{.CONTENT_DIR}} internal models styles tailwind.config.js && task generate && browser-sync reload
-        done
-
-  deps:verify:
-    desc: Verify Go dependencies
-    cmds:
-      - go mod verify

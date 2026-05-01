@@ -6,8 +6,7 @@ A static site generator built in Go.
 
 * Go 1.25+
 * [Task](https://taskfile.dev/)
-* [fswatch](https://github.com/emcrisostomo/fswatch) (optional, for `dev:watch` live reload)
-* [browser-sync](https://browsersync.io/) (optional, for `dev:watch` live reload)
+* [browser-sync](https://browsersync.io/) (optional, for `dev` live reload)
 
 ## Setup
 
@@ -36,10 +35,6 @@ task validate
 
 # Generate and preview site locally
 task dev
-
-# Generate, serve, and watch for changes
-task dev:watch
-```
 
 ## Project Structure
 
