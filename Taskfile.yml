@@ -15,6 +15,7 @@ tasks:
     cmds:
       - task: setup:golangci-lint
       - task: setup:tailwind
+      - go install golang.org/x/tools/cmd/deadcode@latest
       - echo "Setup complete!"
 
   setup:golangci-lint:
@@ -34,38 +35,24 @@ tasks:
     cmds:
       - |
         if [ -f ./{{.BUILD_DIR}}/bin/tailwindcss ]; then
-              echo "Tailwind CLI already installed"
-            else
-              echo "Downloading Tailwind CLI {{.TAILWIND_VERSION}}..."
-              mkdir -p {{.BUILD_DIR}}/bin
-              OS=$(uname -s)
-              ARCH=$(uname -m)
+          echo "Tailwind CLI already installed"
+        else
+          echo "Downloading Tailwind CLI {{.TAILWIND_VERSION}}..."
+          mkdir -p {{.BUILD_DIR}}/bin
+          ARCH=$(uname -m)
+          if [ "$ARCH" = "arm64" ]; then
+            BINARY="tailwindcss-macos-arm64"
+          else
+            BINARY="tailwindcss-macos-x64"
+          fi
+          curl -sLO "https://github.com/tailwindlabs/tailwindcss/releases/download/{{.TAILWIND_VERSION}}/$BINARY"
+          chmod +x "$BINARY"
+          mv "$BINARY" ./{{.BUILD_DIR}}/bin/tailwindcss
+          echo "Tailwind CLI installed to ./{{.BUILD_DIR}}/bin/tailwindcss"
+        fi
 
-              if [ "$OS" = "Linux" ]; then
-                if [ "$ARCH" = "aarch64" ]; then
-                  BINARY="tailwindcss-linux-arm64"
-                else
-                  BINARY="tailwindcss-linux-x64"
-                fi
-              elif [ "$OS" = "Darwin" ]; then
-                if [ "$ARCH" = "arm64" ]; then
-                  BINARY="tailwindcss-macos-arm64"
-                else
-                  BINARY="tailwindcss-macos-x64"
-                fi
-              else
-                echo "Unsupported OS: $OS"
-                exit 1
-              fi
-
-              curl -sLO "https://github.com/tailwindlabs/tailwindcss/releases/download/{{.TAILWIND_VERSION}}/$BINARY"
-              chmod +x "$BINARY"
-              mv "$BINARY" ./{{.BUILD_DIR}}/bin/tailwindcss
-              echo "Tailwind CLI installed to ./{{.BUILD_DIR}}/bin/tailwindcss"
-            fi
-
-            # Install typography
-            npm install -g @tailwindcss/typography
+        # Install typography
+        npm install -g @tailwindcss/typography
 
   default:
     desc: Run all validation tasks
@@ -78,6 +65,7 @@ tasks:
       - task: fmt:check
       - task: lint
       - task: test
+      - task: build
 
   fmt:
     desc: Format all Go files
@@ -91,14 +79,15 @@ tasks:
         exit 1)
 
   lint:
-    desc: Run golangci-lint (skipped if not installed)
+    desc: Run linters
+    deps:
+      - setup
     cmds:
       - |
-        if command -v golangci-lint &> /dev/null; then
-          golangci-lint run ./...
-        else
-          echo "golangci-lint not installed, skipping lint (run 'task setup' to install)"
-        fi
+        golangci-lint run ./...
+        mkdir -p .task
+        trap 'rm -f .task/deadcode_output' EXIT
+        deadcode -test ./... | tee .task/deadcode_output && [ ! -s .task/deadcode_output ]
 
   test:
     desc: Run all tests
