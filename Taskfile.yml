@@ -34,24 +34,38 @@ tasks:
     cmds:
       - |
         if [ -f ./{{.BUILD_DIR}}/bin/tailwindcss ]; then
-          echo "Tailwind CLI already installed"
-        else
-          echo "Downloading Tailwind CLI {{.TAILWIND_VERSION}}..."
-          mkdir -p {{.BUILD_DIR}}/bin
-          ARCH=$(uname -m)
-          if [ "$ARCH" = "arm64" ]; then
-            BINARY="tailwindcss-macos-arm64"
-          else
-            BINARY="tailwindcss-macos-x64"
-          fi
-          curl -sLO "https://github.com/tailwindlabs/tailwindcss/releases/download/{{.TAILWIND_VERSION}}/$BINARY"
-          chmod +x "$BINARY"
-          mv "$BINARY" ./{{.BUILD_DIR}}/bin/tailwindcss
-          echo "Tailwind CLI installed to ./{{.BUILD_DIR}}/bin/tailwindcss"
-        fi
+              echo "Tailwind CLI already installed"
+            else
+              echo "Downloading Tailwind CLI {{.TAILWIND_VERSION}}..."
+              mkdir -p {{.BUILD_DIR}}/bin
+              OS=$(uname -s)
+              ARCH=$(uname -m)
 
-        # Install typography
-        npm install -g @tailwindcss/typography
+              if [ "$OS" = "Linux" ]; then
+                if [ "$ARCH" = "aarch64" ]; then
+                  BINARY="tailwindcss-linux-arm64"
+                else
+                  BINARY="tailwindcss-linux-x64"
+                fi
+              elif [ "$OS" = "Darwin" ]; then
+                if [ "$ARCH" = "arm64" ]; then
+                  BINARY="tailwindcss-macos-arm64"
+                else
+                  BINARY="tailwindcss-macos-x64"
+                fi
+              else
+                echo "Unsupported OS: $OS"
+                exit 1
+              fi
+
+              curl -sLO "https://github.com/tailwindlabs/tailwindcss/releases/download/{{.TAILWIND_VERSION}}/$BINARY"
+              chmod +x "$BINARY"
+              mv "$BINARY" ./{{.BUILD_DIR}}/bin/tailwindcss
+              echo "Tailwind CLI installed to ./{{.BUILD_DIR}}/bin/tailwindcss"
+            fi
+
+            # Install typography
+            npm install -g @tailwindcss/typography
 
   default:
     desc: Run all validation tasks
@@ -64,7 +78,6 @@ tasks:
       - task: fmt:check
       - task: lint
       - task: test
-      - task: build
 
   fmt:
     desc: Format all Go files

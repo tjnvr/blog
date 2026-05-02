@@ -24,3 +24,6 @@ jobs:
 
       - name: Run validate
         run: task validate
+
+      - name: Run generate
+        run: task generate
