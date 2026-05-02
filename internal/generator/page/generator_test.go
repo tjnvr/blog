@@ -7,7 +7,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/timtimjnvr/blog/internal/generator/page/filesystem"
-	"github.com/timtimjnvr/blog/internal/generator/page/html/substitution"
 	htmlsubstitution "github.com/timtimjnvr/blog/internal/generator/page/html/substitution"
 	"github.com/timtimjnvr/blog/internal/generator/page/html/validation"
 	mdsubstitution "github.com/timtimjnvr/blog/internal/generator/page/markdown/substitution"
@@ -22,7 +21,7 @@ func newTestGenerator(t *testing.T, markdownPath, htmlOutputPath, buildDir, sect
 		Contexts: make(map[string]map[string]string),
 	}
 	mdSubs := mdsubstitution.NewRegistry(markdownPath)
-	subs := substitution.NewRegistry(htmlOutputPath, markdownPath, nil, nil, nil, sectionName)
+	subs := htmlsubstitution.NewRegistry(htmlOutputPath, markdownPath, nil, nil, nil, sectionName)
 	vals := validation.NewRegistry(nil, false)
 	return NewGenerator(markdownPath, htmlOutputPath, buildDir, sectionName, config, fs, mdSubs, subs, vals)
 }
@@ -170,18 +169,6 @@ func TestGenerator_Generate_WriteFileError(t *testing.T) {
 	}
 }
 
-type mdSubsMock struct {
-	err error
-}
-
-func (sm mdSubsMock) PlaceHolder() string {
-	return ""
-}
-
-func (sm mdSubsMock) Resolve() (string, error) {
-	return "", sm.err
-}
-
 type htmlSubsMock struct {
 	err error
 }
@@ -230,7 +217,7 @@ func TestGenerator_Generate_NavigationBar(t *testing.T) {
 			Elements: make(map[string]string),
 			Contexts: make(map[string]map[string]string),
 		}
-		subs := substitution.NewRegistry("/build/index.html", "/content/index.md", nil, nil, []section.Section{{DirName: "", DisplayName: "Accueil"}, {DirName: "posts", DisplayName: "Posts"}, {DirName: "about", DisplayName: "About"}}, "")
+		subs := htmlsubstitution.NewRegistry("/build/index.html", "/content/index.md", nil, nil, []section.Section{{DirName: "", DisplayName: "Accueil"}, {DirName: "posts", DisplayName: "Posts"}, {DirName: "about", DisplayName: "About"}}, "")
 		vals := validation.NewRegistry(nil, false)
 		g := NewGenerator("/content/index.md", "/build/index.html", "/build", "", config, fs, mdsubstitution.NewRegistry("/content/index.md"), subs, vals)
 
@@ -267,7 +254,7 @@ func TestGenerator_Generate_NavigationBar(t *testing.T) {
 			Elements: make(map[string]string),
 			Contexts: make(map[string]map[string]string),
 		}
-		subs := substitution.NewRegistry("/build/posts/hello.html", "/content/posts/hello.md", nil, nil, []section.Section{{DirName: "", DisplayName: "Accueil"}, {DirName: "posts", DisplayName: "Posts"}, {DirName: "about", DisplayName: "About"}}, "posts")
+		subs := htmlsubstitution.NewRegistry("/build/posts/hello.html", "/content/posts/hello.md", nil, nil, []section.Section{{DirName: "", DisplayName: "Accueil"}, {DirName: "posts", DisplayName: "Posts"}, {DirName: "about", DisplayName: "About"}}, "posts")
 		vals := validation.NewRegistry(nil, false)
 		g := NewGenerator("/content/posts/hello.md", "/build/posts/hello.html", "/build", "posts", config, fs, mdsubstitution.NewRegistry("/content/posts/hello.md"), subs, vals)
 
@@ -314,7 +301,7 @@ func TestGenerator_Generate_MarkdownSubstitutionError(t *testing.T) {
 	mdSubs := mdsubstitution.NewRegistryWithSubstituters(
 		fakeMarkdownSubstituter{placeholder: "{{my-placeholder}}", err: fmt.Errorf("substitution failed")},
 	)
-	subs := substitution.NewRegistry("/build/page.html", "/content/page.md", nil, nil, nil, "")
+	subs := htmlsubstitution.NewRegistry("/build/page.html", "/content/page.md", nil, nil, nil, "")
 	vals := validation.NewRegistry(nil, false)
 	g := NewGenerator("/content/page.md", "/build/page.html", "/build", "", config, fs, mdSubs, subs, vals)
 
@@ -336,7 +323,7 @@ func TestGenerator_Validate(t *testing.T) {
 			Elements: make(map[string]string),
 			Contexts: make(map[string]map[string]string),
 		}
-		subs := substitution.NewRegistry("/build/page.html", "/content/page.md", nil, nil, nil, "")
+		subs := htmlsubstitution.NewRegistry("/build/page.html", "/content/page.md", nil, nil, nil, "")
 		vals := validation.NewRegistryWithValidators()
 		g := NewGenerator("/content/page.md", "/build/page.html", "/build", "", config, fs, mdsubstitution.NewRegistry("/content/page.md"), subs, vals)
 

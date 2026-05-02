@@ -20,14 +20,6 @@ type (
 	Option func(*Generator)
 )
 
-type generatorOption func(*Generator)
-
-func withFileSystem(fs filesystem.FileSystem) generatorOption {
-	return func(g *Generator) {
-		g.fs = fs
-	}
-}
-
 // Generator is the site generator which allows to generate and validate the site
 // All files and directories attributes are relative to the project root.
 type Generator struct {
