@@ -39,11 +39,16 @@ tasks:
         else
           echo "Downloading Tailwind CLI {{.TAILWIND_VERSION}}..."
           mkdir -p {{.BUILD_DIR}}/bin
+          OS=$(uname -s | tr '[:upper:]' '[:lower:]')
           ARCH=$(uname -m)
-          if [ "$ARCH" = "arm64" ]; then
+          if [ "$OS" = "darwin" ] && [ "$ARCH" = "arm64" ]; then
             BINARY="tailwindcss-macos-arm64"
-          else
+          elif [ "$OS" = "darwin" ]; then
             BINARY="tailwindcss-macos-x64"
+          elif [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
+            BINARY="tailwindcss-linux-arm64"
+          else
+            BINARY="tailwindcss-linux-x64"
           fi
           curl -sLO "https://github.com/tailwindlabs/tailwindcss/releases/download/{{.TAILWIND_VERSION}}/$BINARY"
           chmod +x "$BINARY"
