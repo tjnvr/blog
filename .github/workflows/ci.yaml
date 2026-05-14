@@ -1,0 +1,66 @@
+name: Validate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "1.25.3"
+
+      - name: Install Task
+        uses: go-task/setup-task@v2
+
+      - name: Setup dependencies
+        run: task setup
+
+      - name: Run validate
+        run: task validate
+
+      - name: Generate static site
+        run: task generate
+
+      - name: Upload site artifact
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: actions/upload-artifact@v7
+        with:
+          name: site
+          path: target/build/
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: validate
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment:
+      name: tjanvier.org
+      deployment: false
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Download site artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: site
+          path: target/build/
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@main
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Upload to S3
+        run: |
+          aws s3 sync target/build/ s3://${{ vars.S3_BUCKET }}/ --delete
