@@ -113,6 +113,7 @@ tasks:
       - go.sum
       - main.go
       - ./internal/**/*.go
+      - ./internal/generator/page/page.html
     generates:
       - "{{.BUILD_DIR}}/bin/blog"
     cmds:
