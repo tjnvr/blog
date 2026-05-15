@@ -3,8 +3,8 @@ package substitution
 import (
 	"strings"
 
-	"github.com/timtimjnvr/blog/internal/generator/page/markdown/substitution/listing"
-	"github.com/timtimjnvr/blog/internal/generator/page/markdown/substitution/listing/article"
+	"github.com/tjnvr/blog/internal/generator/page/markdown/substitution/listing"
+	"github.com/tjnvr/blog/internal/generator/page/markdown/substitution/listing/article"
 )
 
 // Registry manages substitutions and applies them to templates

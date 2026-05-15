@@ -7,12 +7,12 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/timtimjnvr/blog/internal/generator/page"
-	"github.com/timtimjnvr/blog/internal/generator/page/filesystem"
-	htmlsubstitutions "github.com/timtimjnvr/blog/internal/generator/page/html/substitution"
-	"github.com/timtimjnvr/blog/internal/generator/page/html/validation"
-	mdsubstitutions "github.com/timtimjnvr/blog/internal/generator/page/markdown/substitution"
-	"github.com/timtimjnvr/blog/internal/generator/section"
+	"github.com/tjnvr/blog/internal/generator/page"
+	"github.com/tjnvr/blog/internal/generator/page/filesystem"
+	htmlsubstitutions "github.com/tjnvr/blog/internal/generator/page/html/substitution"
+	"github.com/tjnvr/blog/internal/generator/page/html/validation"
+	mdsubstitutions "github.com/tjnvr/blog/internal/generator/page/markdown/substitution"
+	"github.com/tjnvr/blog/internal/generator/section"
 )
 
 func (g *Generator) generatePages() error {

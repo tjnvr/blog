@@ -6,11 +6,11 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/timtimjnvr/blog/internal/generator/page/filesystem"
-	htmlsubstitution "github.com/timtimjnvr/blog/internal/generator/page/html/substitution"
-	"github.com/timtimjnvr/blog/internal/generator/page/html/validation"
-	mdsubstitution "github.com/timtimjnvr/blog/internal/generator/page/markdown/substitution"
-	"github.com/timtimjnvr/blog/internal/generator/section"
+	"github.com/tjnvr/blog/internal/generator/page/filesystem"
+	htmlsubstitution "github.com/tjnvr/blog/internal/generator/page/html/substitution"
+	"github.com/tjnvr/blog/internal/generator/page/html/validation"
+	mdsubstitution "github.com/tjnvr/blog/internal/generator/page/markdown/substitution"
+	"github.com/tjnvr/blog/internal/generator/section"
 )
 
 func newTestGenerator(t *testing.T, markdownPath, htmlOutputPath, buildDir, sectionName string, fs *filesystem.MemoryFileSystem) *Generator {

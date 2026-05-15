@@ -1,4 +1,4 @@
-module github.com/timtimjnvr/blog
+module github.com/tjnvr/blog
 
 go 1.25.3
 

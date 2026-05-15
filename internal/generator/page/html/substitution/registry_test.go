@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/timtimjnvr/blog/internal/generator/section"
+	"github.com/tjnvr/blog/internal/generator/section"
 )
 
 // fakeSubstituter is a test double implementing Substituter

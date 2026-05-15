@@ -4,7 +4,7 @@ import (
 	"flag"
 	"log"
 
-	"github.com/timtimjnvr/blog/internal/generator/site"
+	"github.com/tjnvr/blog/internal/generator/site"
 )
 
 func main() {

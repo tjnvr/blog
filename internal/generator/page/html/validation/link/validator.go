@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/timtimjnvr/blog/internal/generator/page/html/validation/shared"
+	"github.com/tjnvr/blog/internal/generator/page/html/validation/shared"
 )
 
 // Validator checks that all links in HTML are accessible

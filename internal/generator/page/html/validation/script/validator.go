@@ -7,7 +7,7 @@ import (
 
 	jsparser "github.com/dop251/goja/parser"
 
-	"github.com/timtimjnvr/blog/internal/generator/page/html/validation/shared"
+	"github.com/tjnvr/blog/internal/generator/page/html/validation/shared"
 )
 
 // Validator checks that all scripts in HTML are accessible

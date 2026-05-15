@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/timtimjnvr/blog/internal/generator/page/html/substitution/content"
-	"github.com/timtimjnvr/blog/internal/generator/page/html/substitution/navigation"
-	"github.com/timtimjnvr/blog/internal/generator/page/html/substitution/summary"
-	"github.com/timtimjnvr/blog/internal/generator/page/html/substitution/title"
-	"github.com/timtimjnvr/blog/internal/generator/section"
+	"github.com/tjnvr/blog/internal/generator/page/html/substitution/content"
+	"github.com/tjnvr/blog/internal/generator/page/html/substitution/navigation"
+	"github.com/tjnvr/blog/internal/generator/page/html/substitution/summary"
+	"github.com/tjnvr/blog/internal/generator/page/html/substitution/title"
+	"github.com/tjnvr/blog/internal/generator/section"
 )
 
 // Registry manages substitutions and applies them to templates

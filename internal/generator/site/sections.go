@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/timtimjnvr/blog/internal/generator/section"
+	"github.com/tjnvr/blog/internal/generator/section"
 )
 
 func (g *Generator) listSections() error {

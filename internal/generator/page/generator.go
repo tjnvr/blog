@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/timtimjnvr/blog/internal/generator/page/filesystem"
-	htmlsubstitution "github.com/timtimjnvr/blog/internal/generator/page/html/substitution"
-	"github.com/timtimjnvr/blog/internal/generator/page/html/validation"
-	"github.com/timtimjnvr/blog/internal/generator/page/markdown"
-	mdsubstitution "github.com/timtimjnvr/blog/internal/generator/page/markdown/substitution"
+	"github.com/tjnvr/blog/internal/generator/page/filesystem"
+	htmlsubstitution "github.com/tjnvr/blog/internal/generator/page/html/substitution"
+	"github.com/tjnvr/blog/internal/generator/page/html/validation"
+	"github.com/tjnvr/blog/internal/generator/page/markdown"
+	mdsubstitution "github.com/tjnvr/blog/internal/generator/page/markdown/substitution"
 )
 
 //go:embed page.html

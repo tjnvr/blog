@@ -5,7 +5,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/timtimjnvr/blog/internal/generator/section"
+	"github.com/tjnvr/blog/internal/generator/section"
 )
 
 // Validator checks that the generated HTML contains a <nav> element

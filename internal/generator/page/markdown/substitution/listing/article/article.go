@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/timtimjnvr/blog/internal/generator/page/markdown/metadata"
+	"github.com/tjnvr/blog/internal/generator/page/markdown/metadata"
 )
 
 type Article struct {

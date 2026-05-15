@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/timtimjnvr/blog/internal/generator/page/filesystem"
-	"github.com/timtimjnvr/blog/internal/generator/section"
+	"github.com/tjnvr/blog/internal/generator/page/filesystem"
+	"github.com/tjnvr/blog/internal/generator/section"
 )
 
 type (

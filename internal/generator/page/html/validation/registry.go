@@ -3,11 +3,11 @@ package validation
 import (
 	"errors"
 
-	"github.com/timtimjnvr/blog/internal/generator/page/html/validation/image"
-	"github.com/timtimjnvr/blog/internal/generator/page/html/validation/link"
-	"github.com/timtimjnvr/blog/internal/generator/page/html/validation/navigation"
-	"github.com/timtimjnvr/blog/internal/generator/page/html/validation/script"
-	"github.com/timtimjnvr/blog/internal/generator/section"
+	"github.com/tjnvr/blog/internal/generator/page/html/validation/image"
+	"github.com/tjnvr/blog/internal/generator/page/html/validation/link"
+	"github.com/tjnvr/blog/internal/generator/page/html/validation/navigation"
+	"github.com/tjnvr/blog/internal/generator/page/html/validation/script"
+	"github.com/tjnvr/blog/internal/generator/section"
 )
 
 // Registry manages validators and runs them on HTML content

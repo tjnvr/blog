@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/timtimjnvr/blog/internal/generator/section"
+	"github.com/tjnvr/blog/internal/generator/section"
 )
 
 // Substituter resolves {{navigation}} placeholder with an auto-generated nav bar

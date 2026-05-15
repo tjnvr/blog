@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/timtimjnvr/blog/internal/generator/page/html/validation/shared"
+	"github.com/tjnvr/blog/internal/generator/page/html/validation/shared"
 )
 
 // Validator checks that all images in HTML are accessible
