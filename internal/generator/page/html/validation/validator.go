@@ -25,5 +25,5 @@ type Validator interface {
 	// Validate checks the HTML content and returns any validation errors
 	// htmlPath is the path to the generated HTML file
 	// buildDir is the root build directory for resolving relative paths
-	Validate(htmlPath string) []error
+	Validate(content []byte) []error
 }

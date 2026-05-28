@@ -19,32 +19,29 @@ type Validator struct {
 	// Timeout for HTTP requests to external links
 	Timeout time.Duration
 	// SkipExternal skips validation of external URLs
-	SkipExternal bool
-	linkRegex    *regexp.Regexp
-	buildDir string
+	SkipExternal       bool
+	linkRegex          *regexp.Regexp
+	HTMLPath, buildDir string
 }
 
 // NewValidator creates a new link validator with default settings
-func NewValidator(fs afero.Fs, skipExternalValidation bool) *Validator {
+func NewValidator(fs afero.Fs, HTMLPath, buildDir string, skipExternalValidation bool) *Validator {
 	return &Validator{
 		fs:           fs,
 		Timeout:      10 * time.Second,
 		SkipExternal: skipExternalValidation,
 		linkRegex:    regexp.MustCompile(`<a[^>]+href="([^"]+)"`),
+		HTMLPath:     HTMLPath,
+		buildDir:     buildDir,
 	}
+
 }
 
 // Validate checks all anchor href attributes in the HTML content
-func (v *Validator) Validate(htmlPath string) []error {
-	var errs []error
-	content, err := afero.ReadFile(v.fs, htmlPath)
-	if err != nil {
-		return []error{fmt.Errorf("could not read file (%s): %v", htmlPath, err)}
-	}
-
+func (v *Validator) Validate(content []byte) []error {
 	// Find all anchor href attributes
 	matches := v.linkRegex.FindAllSubmatch(content, -1)
-
+	errs := make([]error, 0)
 	for _, match := range matches {
 		if len(match) < 2 {
 			continue
@@ -72,11 +69,11 @@ func (v *Validator) Validate(htmlPath string) []error {
 				continue
 			}
 			if err := v.validateExternalLink(href); err != nil {
-				errs = append(errs, fmt.Errorf("%s: external link not accessible: %s (%w)", htmlPath, href, err))
+				errs = append(errs, fmt.Errorf("%s: external link not accessible: %s (%w)", v.HTMLPath, href, err))
 			}
 		} else {
-			if err := v.validateLocalLink(href, htmlPath, v.buildDir); err != nil {
-				errs = append(errs, fmt.Errorf("%s: local link not found: %s", htmlPath, href))
+			if err := v.validateLocalLink(href); err != nil {
+				errs = append(errs, fmt.Errorf("%s: local link not found: %s", v.HTMLPath, href))
 			}
 		}
 	}
@@ -104,7 +101,7 @@ func (v *Validator) validateExternalLink(url string) error {
 }
 
 // validateLocalLink checks if a local link target exists
-func (v *Validator) validateLocalLink(href, htmlPath, buildDir string) error {
+func (v *Validator) validateLocalLink(href string) error {
 	// Remove fragment identifier if present
 	href = strings.Split(href, "#")[0]
 
@@ -113,7 +110,7 @@ func (v *Validator) validateLocalLink(href, htmlPath, buildDir string) error {
 		return nil
 	}
 
-	linkPath := shared.ResolveLocalPath(href, htmlPath, buildDir)
+	linkPath := shared.ResolveLocalPath(href, v.HTMLPath, v.buildDir)
 
 	// Check if path exists as-is (could be a file or directory)
 	if _, err := v.fs.Stat(linkPath); err == nil {

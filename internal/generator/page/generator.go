@@ -57,11 +57,11 @@ func NewGenerator(
 //
 // sourceMarkdownFilePath is the markdown file content to process
 // destinationHTMLFilePath is the HTML file that will be produced
-func (g *Generator) Generate(sourceMarkdownFilePath, destinationHTMLFilePath string) error {
+func (g *Generator) Generate(fromMarkdownFilePath, toHTMLFilePath string) error {
 	// Read markdown file content
-	sourceMarkdownFilePathContent, err := afero.ReadFile(g.fs, sourceMarkdownFilePath)
+	sourceMarkdownFilePathContent, err := afero.ReadFile(g.fs, fromMarkdownFilePath)
 	if err != nil {
-		return fmt.Errorf("reading %s: %w", sourceMarkdownFilePath, err)
+		return fmt.Errorf("reading %s: %w", fromMarkdownFilePath, err)
 	}
 
 	// Apply needed substitutions and generations inside the mardkdown content
@@ -83,27 +83,19 @@ func (g *Generator) Generate(sourceMarkdownFilePath, destinationHTMLFilePath str
 	}
 
 	// Ensure output directory exists
-	if err := g.fs.MkdirAll(filepath.Dir(destinationHTMLFilePath), 0755); err != nil {
+	if err := g.fs.MkdirAll(filepath.Dir(toHTMLFilePath), 0755); err != nil {
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
 
 	// Write HTML file result
-	if err := afero.WriteFile(g.fs, destinationHTMLFilePath, []byte(HTMLContent), 0644); err != nil {
-		return fmt.Errorf("failed to write %s: %w", destinationHTMLFilePath, err)
+	if err := afero.WriteFile(g.fs, toHTMLFilePath, []byte(HTMLContent), 0644); err != nil {
+		return fmt.Errorf("failed to write %s: %w", toHTMLFilePath, err)
 	}
 
-	fmt.Printf("Generated: %s -> %s\n", sourceMarkdownFilePath, destinationHTMLFilePath)
+	fmt.Printf("Generated: %s -> %s\n", fromMarkdownFilePath, toHTMLFilePath)
 	return nil
 }
 
 func (g *Generator) Validate(HTMLFilePath string) error {
-	if _, err := g.fs.Stat(HTMLFilePath); err != nil {
-		return fmt.Errorf("Cannot get file info for file: %v", HTMLFilePath)
-	}
-	content, err := afero.ReadFile(g.fs, HTMLFilePath)
-	if err != nil {
-		return fmt.Errorf("Cannot read file for file: %v", HTMLFilePath)
-	}
-
-	return g.HTMLValidations.Validate(content)
+	return g.HTMLValidations.Validate(HTMLFilePath)
 }

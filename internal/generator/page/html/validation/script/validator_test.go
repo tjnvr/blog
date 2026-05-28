@@ -6,13 +6,7 @@ import (
 
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
-
-func TestNewValidator(t *testing.T) {
-	v := NewValidator(afero.NewMemMapFs())
-	require.NotNil(t, v)
-}
 
 func TestValidator_ValidateLocalScript(t *testing.T) {
 	fs := afero.NewMemMapFs()
@@ -51,11 +45,11 @@ func TestValidator_ValidateLocalScript(t *testing.T) {
 		},
 	}
 
-	v := NewValidator(fs)
+	v := NewValidator(fs, htmlPath, buildDir)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			errs := v.Validate(htmlPath, buildDir, []byte(tt.html))
+			errs := v.Validate([]byte(tt.html))
 			if tt.wantError {
 				assert.NotEmpty(t, errs)
 			} else {
@@ -67,7 +61,6 @@ func TestValidator_ValidateLocalScript(t *testing.T) {
 
 func TestValidator_ValidateJSSyntax(t *testing.T) {
 	fs := afero.NewMemMapFs()
-	buildDir := "/build"
 	_ = fs.MkdirAll("/build/scripts", 0755)
 
 	tests := []struct {
@@ -107,14 +100,14 @@ func TestValidator_ValidateJSSyntax(t *testing.T) {
 		},
 	}
 
-	v := NewValidator(fs)
+	v := NewValidator(fs, "/build/test.html", "/build/")
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_ = afero.WriteFile(fs, "/build/scripts/test.js", []byte(tt.jsContent), 0644)
 
 			html := `<script src="/scripts/test.js"></script>`
-			errs := v.Validate("/build/test.html", buildDir, []byte(html))
+			errs := v.Validate([]byte(html))
 			if tt.wantError {
 				assert.NotEmpty(t, errs)
 			} else {
@@ -153,11 +146,11 @@ func TestValidator_RelativePath(t *testing.T) {
 		},
 	}
 
-	v := NewValidator(fs)
+	v := NewValidator(fs, htmlPath, buildDir)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			errs := v.Validate(htmlPath, buildDir, []byte(tt.html))
+			errs := v.Validate([]byte(tt.html))
 			if tt.wantError {
 				assert.NotEmpty(t, errs)
 			} else {

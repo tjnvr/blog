@@ -17,49 +17,45 @@ type Validator struct {
 	// Timeout for HTTP requests to external images
 	Timeout time.Duration
 	// SkipExternal skips validation of external URLs
-	SkipExternal bool
-	imgRegex     *regexp.Regexp
-	buildDir string
+	SkipExternal       bool
+	imgRegex           *regexp.Regexp
+	HTMLPath, buildDir string
 }
 
 // NewValidator creates a new image validator with default settings
-func NewValidator(fs afero.Fs, skipExternalValidation bool) *Validator {
+func NewValidator(fs afero.Fs, HTMLPath, buildDir string, skipExternalValidation bool) *Validator {
 	return &Validator{
 		fs:           fs,
 		Timeout:      10 * time.Second,
 		SkipExternal: skipExternalValidation,
 		imgRegex:     regexp.MustCompile(`<img[^>]+src="([^"]+)"`),
+		HTMLPath:     HTMLPath,
+		buildDir:     buildDir,
 	}
 }
 
 // Validate checks all img src attributes in the HTML content
-func (v *Validator) Validate(htmlPath string) []error {
+func (v *Validator) Validate(content []byte) []error {
 	var errs []error
-	content, err := afero.ReadFile(v.fs, htmlPath)
-	if err != nil {
-		return []error{fmt.Errorf("could not read file (%s): %v", htmlPath, err)}
-	}
 
 	// Find all img src attributes
 	matches := v.imgRegex.FindAllSubmatch(content, -1)
-
 	for _, match := range matches {
 		if len(match) < 2 {
 			continue
 		}
 
 		src := string(match[1])
-
 		if shared.IsExternalURL(src) {
 			if v.SkipExternal {
 				continue
 			}
 			if err := v.validateExternalImage(src); err != nil {
-				errs = append(errs, fmt.Errorf("%s: external image not accessible: %s (%w)", htmlPath, src, err))
+				errs = append(errs, fmt.Errorf("%s: external image not accessible: %s (%w)", v.HTMLPath, src, err))
 			}
 		} else {
-			if err := v.validateLocalImage(src, htmlPath, v.buildDir); err != nil {
-				errs = append(errs, fmt.Errorf("%s: local image not found: %s", htmlPath, src))
+			if err := v.validateLocalImage(src); err != nil {
+				errs = append(errs, fmt.Errorf("%s: local image not found: %s", v.HTMLPath, src))
 			}
 		}
 	}
@@ -87,9 +83,8 @@ func (v *Validator) validateExternalImage(url string) error {
 }
 
 // validateLocalImage checks if a local image file exists
-func (v *Validator) validateLocalImage(src, htmlPath, buildDir string) error {
-	imagePath := shared.ResolveLocalPath(src, htmlPath, buildDir)
-	if _, err := v.fs.Stat(imagePath); err != nil {
+func (v *Validator) validateLocalImage(src string) error {
+	if _, err := v.fs.Stat(shared.ResolveLocalPath(src, v.HTMLPath, v.buildDir)); err != nil {
 		return err
 	}
 	return nil

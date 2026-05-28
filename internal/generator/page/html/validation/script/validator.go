@@ -12,31 +12,26 @@ import (
 
 // Validator checks that all scripts in HTML are accessible
 type Validator struct {
-	fs          afero.Fs
-	scriptRegex *regexp.Regexp
-	buildDir string
+	fs                 afero.Fs
+	scriptRegex        *regexp.Regexp
+	HTMLPath, buildDir string
 }
 
 // NewValidator creates a new script validator
-func NewValidator(fs afero.Fs, buildDir string) *Validator {
+func NewValidator(fs afero.Fs, HTMLPath, buildDir string) *Validator {
 	return &Validator{
 		fs:          fs,
 		scriptRegex: regexp.MustCompile(`<script[^>]+src="([^"]+)"`),
-		buildDir: buildDir,
+		HTMLPath:    HTMLPath,
+		buildDir:    buildDir,
 	}
 }
 
 // Validate checks all script src attributes in the HTML content
-func (v *Validator) Validate(htmlPath string) []error {
-	var errs []error
-	content, err := afero.ReadFile(v.fs, htmlPath)
-	if err != nil {
-		return []error{fmt.Errorf("could not read file (%s): %v", htmlPath, err)}
-	}
-
+func (v *Validator) Validate(content []byte) []error {
 	// Find all script src attributes
 	matches := v.scriptRegex.FindAllSubmatch(content, -1)
-
+	errs := make([]error, 0)
 	for _, match := range matches {
 		if len(match) < 2 {
 			continue
@@ -49,10 +44,9 @@ func (v *Validator) Validate(htmlPath string) []error {
 			continue
 		}
 
-		scriptPath := shared.ResolveLocalPath(src, htmlPath, v.buildDir)
-
+		scriptPath := shared.ResolveLocalPath(src, v.HTMLPath, v.buildDir)
 		if _, err := v.fs.Stat(scriptPath); err != nil {
-			errs = append(errs, fmt.Errorf("%s: local script not found: %s", htmlPath, src))
+			errs = append(errs, fmt.Errorf("%s: local script not found: %s", v.HTMLPath, src))
 			continue
 		}
 

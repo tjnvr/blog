@@ -5,8 +5,9 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/spf13/afero"
 	"github.com/tjnvr/blog/internal/generator/section"
+
+	"github.com/spf13/afero"
 )
 
 // Validator checks that the generated HTML contains a <nav> element
@@ -16,33 +17,30 @@ type Validator struct {
 	sections      []section.Section
 	navRegex      *regexp.Regexp
 	homeHrefRegex *regexp.Regexp
+	HTMLPath      string
 }
 
 // NewValidator creates a new navigation validator that will check
 // for the presence of nav links to all given sections plus the home page
-func NewValidator(fs afero.Fs, sections []section.Section) *Validator {
+func NewValidator(fs afero.Fs, HTMLPath string, sections []section.Section) *Validator {
 	return &Validator{
-		fs: fs,
+		fs:            fs,
 		sections:      sections,
 		navRegex:      regexp.MustCompile(`(?s)<nav[^>]*>(.*?)</nav>`),
 		homeHrefRegex: regexp.MustCompile(`href="(\.\./)*index\.html"`),
+		HTMLPath:      HTMLPath,
 	}
 }
 
 // Validate checks the HTML content for a <nav> element containing links to all sections
-func (v *Validator) Validate(htmlPath string) []error {
+func (v *Validator) Validate(content []byte) []error {
 	var errs []error
-	content, err := afero.ReadFile(v.fs, htmlPath)
-	if err != nil {
-		return []error{fmt.Errorf("could not read file (%s): %v", htmlPath, err)}
-	}
-
 	html := string(content)
 
 	// Extract <nav> content
 	navMatch := v.navRegex.FindStringSubmatch(html)
 	if len(navMatch) < 2 {
-		errs = append(errs, fmt.Errorf("%s: missing <nav> element", htmlPath))
+		errs = append(errs, fmt.Errorf("%s: missing <nav> element", v.HTMLPath))
 		return errs
 	}
 
@@ -52,18 +50,18 @@ func (v *Validator) Validate(htmlPath string) []error {
 		if s.DirName == "" {
 			// Home section: href may be prefixed with ../ depending on depth
 			if !strings.Contains(navContent, s.DisplayName) {
-				errs = append(errs, fmt.Errorf("%s: navigation missing home link (%s)", htmlPath, s.DisplayName))
+				errs = append(errs, fmt.Errorf("%s: navigation missing home link (%s)", v.HTMLPath, s.DisplayName))
 			}
 			if !v.homeHrefRegex.MatchString(navContent) {
-				errs = append(errs, fmt.Errorf("%s: navigation missing home href to index.html", htmlPath))
+				errs = append(errs, fmt.Errorf("%s: navigation missing home href to index.html", v.HTMLPath))
 			}
 		} else {
 			expectedHref := s.DirName + "/index.html"
 			if !strings.Contains(navContent, expectedHref) {
-				errs = append(errs, fmt.Errorf("%s: navigation missing link to section %q (expected href containing %q)", htmlPath, s.DirName, expectedHref))
+				errs = append(errs, fmt.Errorf("%s: navigation missing link to section %q (expected href containing %q)", v.HTMLPath, s.DirName, expectedHref))
 			}
 			if !strings.Contains(navContent, s.DisplayName) {
-				errs = append(errs, fmt.Errorf("%s: navigation missing display name %q for section %q", htmlPath, s.DisplayName, s.DirName))
+				errs = append(errs, fmt.Errorf("%s: navigation missing display name %q for section %q", v.HTMLPath, s.DisplayName, s.DirName))
 			}
 		}
 	}

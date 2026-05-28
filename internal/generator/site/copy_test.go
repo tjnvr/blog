@@ -3,7 +3,6 @@ package site
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/spf13/afero"
@@ -29,19 +28,6 @@ func TestCopyDir(t *testing.T) {
 			expectedFiles: []string{"file1.txt", "file2.txt"},
 		},
 		{
-			name: "copy with extension filter",
-			srcFiles: map[string]string{
-				"script.js":  "console.log('hello')",
-				"style.css":  "body {}",
-				"app.js":     "const x = 1",
-				"readme.txt": "readme",
-			},
-			filter: func(path string) bool {
-				return strings.HasSuffix(path, ".js")
-			},
-			expectedFiles: []string{"script.js", "app.js"},
-		},
-		{
 			name: "preserve directory structure",
 			srcFiles: map[string]string{
 				"root.txt":          "root",
@@ -55,16 +41,6 @@ func TestCopyDir(t *testing.T) {
 			name:          "empty source directory",
 			srcFiles:      map[string]string{},
 			filter:        nil,
-			expectedFiles: []string{},
-		},
-		{
-			name: "filter excludes all files",
-			srcFiles: map[string]string{
-				"file.txt": "content",
-			},
-			filter: func(path string) bool {
-				return false
-			},
 			expectedFiles: []string{},
 		},
 	}
@@ -83,7 +59,7 @@ func TestCopyDir(t *testing.T) {
 				require.NoError(t, afero.WriteFile(fs, fullPath, []byte(content), 0644))
 			}
 
-			err := copyDir(fs, srcDir, destDir, tt.filter)
+			err := copyDir(fs, srcDir, destDir)
 
 			if tt.wantErr {
 				require.Error(t, err)
@@ -119,6 +95,6 @@ func TestCopyDir(t *testing.T) {
 
 func TestCopyDir_NonExistentSource(t *testing.T) {
 	fs := afero.NewMemMapFs()
-	err := copyDir(fs, "/nonexistent", "/dest", nil)
+	err := copyDir(fs, "/nonexistent", "/dest")
 	assert.Error(t, err)
 }

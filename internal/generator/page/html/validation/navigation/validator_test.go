@@ -5,19 +5,9 @@ import (
 
 	"github.com/tjnvr/blog/internal/generator/section"
 
+	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
-
-func TestNewValidator(t *testing.T) {
-	v := NewValidator([]section.Section{
-		{DirName: "", DisplayName: "Accueil"},
-		{DirName: "posts", DisplayName: "Posts"},
-		{DirName: "about", DisplayName: "About"},
-	})
-	require.NotNil(t, v)
-	assert.Len(t, v.sections, 3)
-}
 
 func TestValidator_Validate(t *testing.T) {
 	tests := []struct {
@@ -134,11 +124,9 @@ func TestValidator_Validate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			v := NewValidator(tt.sections)
-			errs := v.Validate("test.html", "/build", []byte(tt.html))
-
+			v := NewValidator(afero.NewMemMapFs(), "test.html", tt.sections)
+			errs := v.Validate([]byte(tt.html))
 			assert.Len(t, errs, tt.wantErrors)
-
 			if len(tt.wantMsg) > 0 {
 				allErrs := ""
 				for _, e := range errs {

@@ -3,6 +3,7 @@ package site
 import (
 	"errors"
 	"fmt"
+	"path/filepath"
 
 	"github.com/tjnvr/blog/internal/generator/section"
 
@@ -11,29 +12,24 @@ import (
 
 type (
 	PageGenerator interface {
-		Generate(sourceMarkdownFilePath, destinationHTMLFilePath string) error
+		Generate(fromMarkdownFilePath, toHTMLFilePath string) error
+
 		Validate(HTMLFilePath string) error
 	}
 
-	pageGeneratorFactory func(sourceMDPath, destinationHTMLPath, buildDir, pageSection string, assetsPathTranslater, linksPathTranslater newPathResolver, sections []section.Section, skipURLValidation bool) PageGenerator
+	pageGeneratorFactory func(sourceMDPath, toHTMLPath, buildDir, pageSection string, assetsPathTranslater, linksPathTranslater newPathResolver, sections []section.Section, skipURLValidation bool) PageGenerator
 
 	Option func(*Generator)
 )
 
-// Generator is the site generator which allows to generate and validate the site
-// All files and directories attributes are relative to the project root.
 type Generator struct {
-	contentDir           string
-	assetsDir            string
-	assetsOutDir         string
-	buildDir             string
-	scriptsDir           string
-	scriptsOutDir        string
-	skipURLValidation    bool
-	pageGeneratorFactory pageGeneratorFactory
-	sections             []section.Section
-	generatorsBySourceMarkdownFilePath      map[string]PageGenerator
-	fs                   afero.Fs
+	// All files and directories attributes are relative to the project root.
+	fs                                    afero.Fs
+	skipURLValidation                     bool
+	pageGeneratorFactory                  pageGeneratorFactory
+	sections                              []section.Section
+	HTMLFilePathsBySourceMarkdownFilePath map[string]string
+	generatorsBySourceMarkdownFilePath    map[string]PageGenerator
 }
 
 // WithSkipURLValidation returns an Option that disables external URL validation.
@@ -43,16 +39,10 @@ func WithSkipURLValidation(skip bool) Option {
 
 func NewGenerator(fs afero.Fs, opts ...Option) (*Generator, error) {
 	g := &Generator{
-		contentDir:           "./content/markdown",
-		buildDir:             "./target/build",
-		assetsDir:            "./content/assets",
-		assetsOutDir:         "./target/build/assets",
-		scriptsDir:           "./scripts",
-		scriptsOutDir:        "./target/build/scripts",
-		sections:             make([]section.Section, 0),
-		pageGeneratorFactory: newPageGeneratorFactory(fs),
-		generatorsBySourceMarkdownFilePath:      make(map[string]PageGenerator),
-		fs:                   fs,
+		sections:                           make([]section.Section, 0),
+		pageGeneratorFactory:               newPageGeneratorFactory(fs),
+		generatorsBySourceMarkdownFilePath: make(map[string]PageGenerator),
+		fs:                                 fs,
 	}
 
 	for _, opt := range opts {
@@ -62,24 +52,24 @@ func NewGenerator(fs afero.Fs, opts ...Option) (*Generator, error) {
 	return g, nil
 }
 
-func (g *Generator) Generate() error {
-	if err := g.makeAllDirectories(); err != nil {
-		return fmt.Errorf("failed to create output directories: %w", err)
-	}
-
-	if err := g.listSections(); err != nil {
+// Generate process markdown files to gerne
+//
+// sourceMarkdownFilePath is the markdown file content to process
+// destinationHTMLFilePath is the HTML file that will be produced
+func (g *Generator) Generate(contentDir, buildDir, assetsDir, assetsOutDir, scriptsDir, scriptsOutDir string) error {
+	if err := g.listSections(contentDir); err != nil {
 		return fmt.Errorf("failed to list site sections: %w", err)
 	}
 
-	if err := g.copyAssets(); err != nil {
+	if err := copyDir(g.fs, assetsDir, filepath.Join(buildDir, "assets")); err != nil {
 		return fmt.Errorf("failed to copy assets: %w", err)
 	}
 
-	if err := g.copyScripts(); err != nil {
-		return fmt.Errorf("failed to copy scripts: %w", err)
+	if err := copyDir(g.fs, scriptsDir, filepath.Join(buildDir, "scripts")); err != nil {
+		return fmt.Errorf("failed to copy assets: %w", err)
 	}
 
-	if err := g.generatePages(); err != nil {
+	if err := g.generatePages(contentDir, assetsDir, buildDir); err != nil {
 		return fmt.Errorf("failed to generate pages: %w", err)
 	}
 
@@ -88,8 +78,12 @@ func (g *Generator) Generate() error {
 
 func (g *Generator) Validate() error {
 	errs := make([]error, 0)
-	for _, pg := range g.generatorsBySourceMarkdownFilePath {
-		if err := pg.Validate(); err != nil {
+	for markdownFilePath, HTMLFilePath := range g.HTMLFilePathsBySourceMarkdownFilePath {
+		pageGenerator, ok := g.generatorsBySourceMarkdownFilePath[markdownFilePath]
+		if !ok {
+			return fmt.Errorf("cannot find a page generator for %s", HTMLFilePath)
+		}
+		if err := pageGenerator.Validate(HTMLFilePath); err != nil {
 			errs = append(errs, err)
 		}
 	}

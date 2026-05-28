@@ -17,12 +17,13 @@ import (
 	"github.com/spf13/afero"
 )
 
-func (g *Generator) generatePages() error {
-	assetsPathTranslater := NewPathResolver(g.assetsDir, filepath.Join(g.buildDir, "assets"))
-	linksPathTranslater := NewPathResolver(g.contentDir, g.buildDir)
+func (g *Generator) generatePages(contentDir, assetsDir, buildDir string) error {
+	assetsPathTranslater := NewPathResolver(assetsDir, filepath.Join(buildDir, "assets"))
+	linksPathTranslater := NewPathResolver(contentDir, buildDir)
 
 	errs := make([]error, 0)
-	err := afero.Walk(g.fs, g.contentDir, func(markDownFilePath string, info os.FileInfo, err error) error {
+	HTMLFilePathsBySourceMarkdownFilePath := make(map[string]string)
+	err := afero.Walk(g.fs, contentDir, func(fromMarkdownFilePath string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -33,28 +34,29 @@ func (g *Generator) generatePages() error {
 		}
 
 		// Only Handling markdown files
-		if !strings.HasSuffix(markDownFilePath, ".md") {
-			errs = append(errs, fmt.Errorf("wrong extension for file in %s", markDownFilePath))
+		if !strings.HasSuffix(fromMarkdownFilePath, ".md") {
+			errs = append(errs, fmt.Errorf("wrong extension for file in %s", fromMarkdownFilePath))
 			return nil
 		}
 
 		// Page section is the directory between content dir and file name
-		pageSection, err := section.ExtractSection(g.contentDir, markDownFilePath)
+		pageSection, err := section.ExtractSection(contentDir, fromMarkdownFilePath)
 		if err != nil {
 			errs = append(errs, err)
 			return nil
 		}
 
-		pageFilePathRelToContentDir, err := filepath.Rel(g.contentDir, markDownFilePath)
+		pageFilePathRelToContentDir, err := filepath.Rel(contentDir, fromMarkdownFilePath)
 		if err != nil {
-			return fmt.Errorf("cannot compute relative path of %s from %s: %w", markDownFilePath, g.contentDir, err)
+			return fmt.Errorf("cannot compute relative path of %s from %s: %w", fromMarkdownFilePath, contentDir, err)
 		}
 
-		htmlOutputPath := filepath.Join(g.buildDir, strings.TrimSuffix(pageFilePathRelToContentDir, ".md")+".html")
-		g.generatorsBySourceMarkdownFilePath[markDownFilePath] = g.pageGeneratorFactory(
-			markDownFilePath,
-			htmlOutputPath,
-			g.buildDir,
+		toHTMLFilePath := filepath.Join(buildDir, strings.TrimSuffix(pageFilePathRelToContentDir, ".md")+".html")
+		HTMLFilePathsBySourceMarkdownFilePath[fromMarkdownFilePath] = toHTMLFilePath
+		g.generatorsBySourceMarkdownFilePath[fromMarkdownFilePath] = g.pageGeneratorFactory(
+			fromMarkdownFilePath,
+			toHTMLFilePath,
+			buildDir,
 			pageSection,
 			assetsPathTranslater,
 			linksPathTranslater,
@@ -68,15 +70,19 @@ func (g *Generator) generatePages() error {
 		errs = append(errs, err)
 	}
 
-	for _, generator := range g.generatorsBySourceMarkdownFilePath {
-		if err := generator.Generate(); err != nil {
+	for markdownSourceFilePath, HTMLFilePath := range HTMLFilePathsBySourceMarkdownFilePath {
+		pageGenerator, ok := g.generatorsBySourceMarkdownFilePath[markdownSourceFilePath]
+		if !ok {
+			return fmt.Errorf("cannot find a page generator for %s", markdownSourceFilePath)
+		}
+		if err := pageGenerator.Generate(markdownSourceFilePath, HTMLFilePath); err != nil {
 			errs = append(errs, err)
 		}
 	}
 
 	if len(errs) != 0 {
 		// Empty the page generators
-		g.generatorsBySourceMarkdownFilePath = make([]PageGenerator, 0)
+		g.generatorsBySourceMarkdownFilePath = make(map[string]PageGenerator, 0)
 		return errors.Join(errs...)
 	}
 
@@ -88,7 +94,7 @@ func newPageGeneratorFactory(fs afero.Fs) pageGeneratorFactory {
 		var (
 			markdownSubstitutions = mdsubstitutions.NewRegistry(sourceMDPath, fs)
 			HTMLSubstitutions     = htmlsubstitutions.NewRegistry(destinationHTMLPath, sourceMDPath, assetsPathTranslater, linksPathTranslater, sections, pageSection)
-			validations           = validation.NewRegistry(fs, sections, skipURLValidation)
+			validations           = validation.NewRegistry(fs, destinationHTMLPath, buildDir, sections, skipURLValidation)
 		)
 		return page.NewGenerator(fs, markdownSubstitutions, markdown.NewConverter(), HTMLSubstitutions, validations)
 	}

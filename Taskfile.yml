@@ -1,8 +1,14 @@
 version: "3"
 
 vars:
-  BUILD_SITE_DIR: target/build
+  _CONTENTDIR: ./content/markdown
+  _BUILDDIR: ./target/build
+  _ASSETSDIR: ./content/assets
+  _ASSETSOUTDIR: ./target/build/assets
+  _SCRIPTSDIR: ./scripts
+  _SCRIPTSOUTDIR: ./target/build/scripts
   BUILD_DIR: target
+  BUILD_SITE_DIR: target/build
   CONTENT_DIR: content
   MARKDOWN_DIR: content/markdown
   IMAGES_DIR: content/assets/images

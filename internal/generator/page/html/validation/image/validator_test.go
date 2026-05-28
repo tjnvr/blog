@@ -9,15 +9,7 @@ import (
 
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
-
-func TestNewValidator(t *testing.T) {
-	v := NewValidator(afero.NewMemMapFs(), false)
-	require.NotNil(t, v)
-	assert.Equal(t, 10*time.Second, v.Timeout)
-	assert.False(t, v.SkipExternal)
-}
 
 func TestValidator_ValidateLocalImage(t *testing.T) {
 	fs := afero.NewMemMapFs()
@@ -65,11 +57,11 @@ func TestValidator_ValidateLocalImage(t *testing.T) {
 		},
 	}
 
-	v := NewValidator(fs, false)
+	v := NewValidator(fs, htmlPath, buildDir, false)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			errs := v.Validate(htmlPath, buildDir, []byte(tt.html))
+			errs := v.Validate([]byte(tt.html))
 			if tt.wantError {
 				assert.NotEmpty(t, errs)
 			} else {
@@ -109,12 +101,12 @@ func TestValidator_ValidateExternalImage(t *testing.T) {
 		},
 	}
 
-	v := NewValidator(afero.NewMemMapFs(), false)
+	v := NewValidator(afero.NewMemMapFs(), htmlPath, buildDir, false)
 	v.Timeout = 5 * time.Second
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			errs := v.Validate(htmlPath, buildDir, []byte(tt.html))
+			errs := v.Validate([]byte(tt.html))
 			if tt.wantError {
 				assert.NotEmpty(t, errs)
 			} else {
@@ -126,8 +118,8 @@ func TestValidator_ValidateExternalImage(t *testing.T) {
 
 func TestValidator_SkipExternal(t *testing.T) {
 	html := `<img src="http://invalid.invalid/image.png" alt="Invalid">`
-	v := NewValidator(afero.NewMemMapFs(), true)
+	v := NewValidator(afero.NewMemMapFs(), "", "", true)
 
-	errs := v.Validate("/build/test.html", "/build", []byte(html))
+	errs := v.Validate([]byte(html))
 	assert.Empty(t, errs)
 }

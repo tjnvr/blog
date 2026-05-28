@@ -2,6 +2,7 @@ package validation
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/tjnvr/blog/internal/generator/page/html/validation/image"
 	"github.com/tjnvr/blog/internal/generator/page/html/validation/link"
@@ -14,37 +15,40 @@ import (
 
 // Registry manages validators and runs them on HTML content
 type Registry struct {
+	fs         afero.Fs
 	validators []Validator
 }
 
 // NewRegistry creates a validation registry with the navigation validator configured for the given sections
-func NewRegistry(fs afero.Fs, sections []section.Section, skipURLValidation bool) *Registry {
-	lv := link.NewValidator(fs, skipURLValidation)
-	iv := image.NewValidator(fs, skipURLValidation)
+func NewRegistry(fs afero.Fs, HTMLPath, buildDir string, sections []section.Section, skipURLValidation bool) *Registry {
 	return &Registry{
+		fs: fs,
 		validators: []Validator{
-			lv,
-			iv,
-			navigation.NewValidator(sections),
+			image.NewValidator(fs, HTMLPath, buildDir, skipURLValidation),
+			script.NewValidator(fs, HTMLPath, buildDir),
+			link.NewValidator(fs, HTMLPath, buildDir, skipURLValidation),
+			navigation.NewValidator(fs, HTMLPath, sections),
 		},
 	}
 }
 
 // NewRegistryWithValidators creates a registry with custom validators
-func NewRegistryWithValidators(validators ...Validator) *Registry {
+func NewRegistryWithValidators(fs afero.Fs, validators ...Validator) *Registry {
 	return &Registry{
+		fs:         fs,
 		validators: validators,
 	}
 }
 
 // NewDefaultRegistry creates a validation registry with default validators (image, script, link, navigation)
-func NewDefaultRegistry(fs afero.Fs, build string, sections []section.Section, skipURLValidation bool) *Registry {
+func NewDefaultRegistry(fs afero.Fs, HTMLPath, buildDir string, sections []section.Section, skipURLValidation bool) *Registry {
 	return &Registry{
+		fs: fs,
 		validators: []Validator{
-			image.NewValidator(fs, skipURLValidation),
-			script.NewValidator(fs, build),
-			link.NewValidator(fs, skipURLValidation),
-			navigation.NewValidator(fs, sections),
+			image.NewValidator(fs, HTMLPath, buildDir, skipURLValidation),
+			script.NewValidator(fs, HTMLPath, buildDir),
+			link.NewValidator(fs, HTMLPath, buildDir, skipURLValidation),
+			navigation.NewValidator(fs, HTMLPath, sections),
 		},
 	}
 }
@@ -55,10 +59,17 @@ func (r *Registry) Register(v Validator) {
 }
 
 // Validate runs all registered validators on the given HTML content
-func (r *Registry) Validate(htmlPath string) error {
-	var errs []error
+func (r *Registry) Validate(HTMLFilePath string) error {
+	if _, err := r.fs.Stat(HTMLFilePath); err != nil {
+		return fmt.Errorf("Cannot get file info for file: %v", HTMLFilePath)
+	}
+	content, err := afero.ReadFile(r.fs, HTMLFilePath)
+	if err != nil {
+		return fmt.Errorf("Cannot read file for file: %v", HTMLFilePath)
+	}
+	errs := make([]error, 0)
 	for _, v := range r.validators {
-		errs = append(errs, v.Validate(htmlPath)...)
+		errs = append(errs, v.Validate(content)...)
 	}
 	if len(errs) > 0 {
 		return errors.Join(errs...)
