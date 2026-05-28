@@ -14,19 +14,25 @@ import (
 type Validator struct {
 	fs          afero.Fs
 	scriptRegex *regexp.Regexp
+	buildDir string
 }
 
 // NewValidator creates a new script validator
-func NewValidator(fs afero.Fs) *Validator {
+func NewValidator(fs afero.Fs, buildDir string) *Validator {
 	return &Validator{
 		fs:          fs,
 		scriptRegex: regexp.MustCompile(`<script[^>]+src="([^"]+)"`),
+		buildDir: buildDir,
 	}
 }
 
 // Validate checks all script src attributes in the HTML content
-func (v *Validator) Validate(htmlPath, buildDir string, content []byte) []error {
+func (v *Validator) Validate(htmlPath string) []error {
 	var errs []error
+	content, err := afero.ReadFile(v.fs, htmlPath)
+	if err != nil {
+		return []error{fmt.Errorf("could not read file (%s): %v", htmlPath, err)}
+	}
 
 	// Find all script src attributes
 	matches := v.scriptRegex.FindAllSubmatch(content, -1)
@@ -43,7 +49,7 @@ func (v *Validator) Validate(htmlPath, buildDir string, content []byte) []error 
 			continue
 		}
 
-		scriptPath := shared.ResolveLocalPath(src, htmlPath, buildDir)
+		scriptPath := shared.ResolveLocalPath(src, htmlPath, v.buildDir)
 
 		if _, err := v.fs.Stat(scriptPath); err != nil {
 			errs = append(errs, fmt.Errorf("%s: local script not found: %s", htmlPath, src))

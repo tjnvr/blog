@@ -15,7 +15,7 @@ type (
 		Validate(HTMLFilePath string) error
 	}
 
-	pageGeneratorFactory func(buildDir, pageSection string, assetsPathTranslater, linksPathTranslater newPathResolver, sections []section.Section, skipURLValidation bool) PageGenerator
+	pageGeneratorFactory func(sourceMDPath, destinationHTMLPath, buildDir, pageSection string, assetsPathTranslater, linksPathTranslater newPathResolver, sections []section.Section, skipURLValidation bool) PageGenerator
 
 	Option func(*Generator)
 )
@@ -32,7 +32,7 @@ type Generator struct {
 	skipURLValidation    bool
 	pageGeneratorFactory pageGeneratorFactory
 	sections             []section.Section
-	pagesGenerators      []PageGenerator
+	generatorsBySourceMarkdownFilePath      map[string]PageGenerator
 	fs                   afero.Fs
 }
 
@@ -50,8 +50,8 @@ func NewGenerator(fs afero.Fs, opts ...Option) (*Generator, error) {
 		scriptsDir:           "./scripts",
 		scriptsOutDir:        "./target/build/scripts",
 		sections:             make([]section.Section, 0),
-		pagesGenerators:      make([]PageGenerator, 0),
 		pageGeneratorFactory: newPageGeneratorFactory(fs),
+		generatorsBySourceMarkdownFilePath:      make(map[string]PageGenerator),
 		fs:                   fs,
 	}
 
@@ -88,7 +88,7 @@ func (g *Generator) Generate() error {
 
 func (g *Generator) Validate() error {
 	errs := make([]error, 0)
-	for _, pg := range g.pagesGenerators {
+	for _, pg := range g.generatorsBySourceMarkdownFilePath {
 		if err := pg.Validate(); err != nil {
 			errs = append(errs, err)
 		}

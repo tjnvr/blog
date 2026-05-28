@@ -249,7 +249,7 @@ func TestValidate_AllPass(t *testing.T) {
 	pg1 := &fakePageGenerator{}
 	pg2 := &fakePageGenerator{}
 	pg3 := &fakePageGenerator{}
-	g.pagesGenerators = []PageGenerator{pg1, pg2, pg3}
+	g.generatorsBySourceMarkdownFilePath = []PageGenerator{pg1, pg2, pg3}
 
 	assert.NoError(t, g.Validate())
 
@@ -260,7 +260,7 @@ func TestValidate_AllPass(t *testing.T) {
 
 func TestValidate_WithErrors(t *testing.T) {
 	g, _ := NewGenerator(afero.NewMemMapFs())
-	g.pagesGenerators = []PageGenerator{
+	g.generatorsBySourceMarkdownFilePath = []PageGenerator{
 		&fakePageGenerator{},
 		&fakePageGenerator{validateErr: fmt.Errorf("broken link")},
 		&fakePageGenerator{validateErr: fmt.Errorf("missing image")},

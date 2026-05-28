@@ -38,13 +38,13 @@ func NewRegistryWithValidators(validators ...Validator) *Registry {
 }
 
 // NewDefaultRegistry creates a validation registry with default validators (image, script, link, navigation)
-func NewDefaultRegistry(fs afero.Fs, sections []section.Section, skipURLValidation bool) *Registry {
+func NewDefaultRegistry(fs afero.Fs, build string, sections []section.Section, skipURLValidation bool) *Registry {
 	return &Registry{
 		validators: []Validator{
 			image.NewValidator(fs, skipURLValidation),
-			script.NewValidator(fs),
+			script.NewValidator(fs, build),
 			link.NewValidator(fs, skipURLValidation),
-			navigation.NewValidator(sections),
+			navigation.NewValidator(fs, sections),
 		},
 	}
 }
@@ -55,7 +55,7 @@ func (r *Registry) Register(v Validator) {
 }
 
 // Validate runs all registered validators on the given HTML content
-func (r *Registry) Validate(htmlPath, buildDir string, content []byte) error {
+func (r *Registry) Validate(htmlPath string) error {
 	var errs []error
 	for _, v := range r.validators {
 		errs = append(errs, v.Validate(htmlPath)...)

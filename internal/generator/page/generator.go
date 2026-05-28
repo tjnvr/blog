@@ -17,7 +17,7 @@ type (
 		markdownSubstitutions   MarkdownSubstituer
 		markdownToHTMLConverter MarkdownConverter
 		HTMLSubstitutions       HTMLSubstituer
-		validations             PageValidator
+		HTMLValidations         PageValidator
 	}
 
 	MarkdownSubstituer interface {
@@ -33,7 +33,7 @@ type (
 	}
 
 	PageValidator interface {
-		Validate(htmlPath string) error
+		Validate(HTMLPath string) error
 	}
 )
 
@@ -49,11 +49,14 @@ func NewGenerator(
 		markdownSubstitutions:   markdownSubstitutions,
 		markdownToHTMLConverter: markdownToHTMLConverter,
 		HTMLSubstitutions:       HTMLSubstitutions,
-		validations:             validations,
+		HTMLValidations:         validations,
 	}
 }
 
-// Generate generates an html page by projecting the markdown file in the HTML template.
+// Generate produces an HTML page using a template and the content provided in a markdown file
+//
+// sourceMarkdownFilePath is the markdown file content to process
+// destinationHTMLFilePath is the HTML file that will be produced
 func (g *Generator) Generate(sourceMarkdownFilePath, destinationHTMLFilePath string) error {
 	// Read markdown file content
 	sourceMarkdownFilePathContent, err := afero.ReadFile(g.fs, sourceMarkdownFilePath)
@@ -68,13 +71,13 @@ func (g *Generator) Generate(sourceMarkdownFilePath, destinationHTMLFilePath str
 	}
 
 	// Convert the markdown to HTML
-	htmlContent, err := g.markdownToHTMLConverter.Convert([]byte(markdDownStringSourceContent))
+	HTMLContent, err := g.markdownToHTMLConverter.Convert([]byte(markdDownStringSourceContent))
 	if err != nil {
 		return fmt.Errorf("failed to convert markdown content: %w", err)
 	}
 
 	// Project the HTML content into the page template (e.g., populating body, title).
-	htmlContent, err = g.HTMLSubstitutions.Apply(defaultTemplate, htmlContent)
+	HTMLContent, err = g.HTMLSubstitutions.Apply(defaultTemplate, HTMLContent)
 	if err != nil {
 		return fmt.Errorf("failed to project content inside the page template: %w", err)
 	}
@@ -85,8 +88,7 @@ func (g *Generator) Generate(sourceMarkdownFilePath, destinationHTMLFilePath str
 	}
 
 	// Write HTML file result
-	htmlContentBytes := []byte(htmlContent)
-	if err := afero.WriteFile(g.fs, destinationHTMLFilePath, htmlContentBytes, 0644); err != nil {
+	if err := afero.WriteFile(g.fs, destinationHTMLFilePath, []byte(HTMLContent), 0644); err != nil {
 		return fmt.Errorf("failed to write %s: %w", destinationHTMLFilePath, err)
 	}
 
@@ -95,5 +97,13 @@ func (g *Generator) Generate(sourceMarkdownFilePath, destinationHTMLFilePath str
 }
 
 func (g *Generator) Validate(HTMLFilePath string) error {
-	return g.validations.Validate(HTMLFilePath)
+	if _, err := g.fs.Stat(HTMLFilePath); err != nil {
+		return fmt.Errorf("Cannot get file info for file: %v", HTMLFilePath)
+	}
+	content, err := afero.ReadFile(g.fs, HTMLFilePath)
+	if err != nil {
+		return fmt.Errorf("Cannot read file for file: %v", HTMLFilePath)
+	}
+
+	return g.HTMLValidations.Validate(content)
 }
