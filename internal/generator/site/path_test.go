@@ -2,6 +2,9 @@ package site
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGetNewPath(t *testing.T) {
@@ -76,12 +79,12 @@ func TestGetNewPath(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			resolver := NewPathResolver(tt.oldPathDirectory, tt.newPathDirectory)
 			got, err := resolver.GetNewPath(tt.oldPath, tt.fromPath)
-			if (err != nil) != tt.wantErr {
-				t.Fatalf("GetNewPath() error = %v, wantErr %v", err, tt.wantErr)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
 			}
-			if got != tt.want {
-				t.Errorf("GetNewPath() = %q, want %q", got, tt.want)
-			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }

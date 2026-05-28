@@ -22,6 +22,7 @@ tasks:
     cmds:
       - |
         go install golang.org/x/tools/cmd/deadcode@latest
+        go install -v github.com/incu6us/goimports-reviser/v3@latest
         if command -v golangci-lint &> /dev/null; then
           echo "golangci-lint already installed: $(golangci-lint --version)"
         else
@@ -69,8 +70,12 @@ tasks:
 
   fmt:
     desc: Format all Go files
+    deps:
+        - setup:go
     cmds:
-      - go fmt ./...
+        - goimports-reviser -imports-order "std,project, company,general" -company-prefixes "github.com/tjnvr" ./...
+        - go mod tidy
+        - go fmt ./...
 
   fmt:check:
     desc: Check if Go files are formatted

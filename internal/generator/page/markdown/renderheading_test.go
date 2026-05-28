@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestHeadingRenderer_AllLevels(t *testing.T) {
@@ -13,23 +16,11 @@ func TestHeadingRenderer_AllLevels(t *testing.T) {
 		t.Run(fmt.Sprintf("h%d", level), func(t *testing.T) {
 			input := fmt.Sprintf("%s Heading", strings.Repeat("#", level))
 			result, err := converter.Convert([]byte(input))
-			if err != nil {
-				t.Fatalf("Convert() error = %v", err)
-			}
+			require.NoError(t, err)
 
-			tag := fmt.Sprintf("<h%d", level)
-			if !strings.Contains(result, tag) {
-				t.Errorf("expected %s tag, got %q", tag, result)
-			}
-
-			if !strings.Contains(result, `<a href="#heading" class="heading-anchor">#</a>`) {
-				t.Errorf("expected anchor link in heading, got %q", result)
-			}
-
-			closeTag := fmt.Sprintf("</h%d>", level)
-			if !strings.Contains(result, closeTag) {
-				t.Errorf("expected closing %s tag, got %q", closeTag, result)
-			}
+			assert.Contains(t, result, fmt.Sprintf("<h%d", level))
+			assert.Contains(t, result, `<a href="#heading" class="heading-anchor">#</a>`)
+			assert.Contains(t, result, fmt.Sprintf("</h%d>", level))
 		})
 	}
 }
@@ -62,19 +53,9 @@ func TestHeadingRenderer_SlugifiedID(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result, err := converter.Convert([]byte(tt.input))
-			if err != nil {
-				t.Fatalf("Convert() error = %v", err)
-			}
-
-			expectedAttr := fmt.Sprintf(`id="%s"`, tt.expectedID)
-			if !strings.Contains(result, expectedAttr) {
-				t.Errorf("expected %s, got %q", expectedAttr, result)
-			}
-
-			expectedHref := fmt.Sprintf(`href="#%s"`, tt.expectedID)
-			if !strings.Contains(result, expectedHref) {
-				t.Errorf("expected anchor %s, got %q", expectedHref, result)
-			}
+			require.NoError(t, err)
+			assert.Contains(t, result, fmt.Sprintf(`id="%s"`, tt.expectedID))
+			assert.Contains(t, result, fmt.Sprintf(`href="#%s"`, tt.expectedID))
 		})
 	}
 }
@@ -84,23 +65,12 @@ func TestHeadingRenderer_DuplicateHeadings(t *testing.T) {
 
 	input := "## Section\n\nSome text.\n\n## Section\n\nMore text.\n\n## Section"
 	result, err := converter.Convert([]byte(input))
-	if err != nil {
-		t.Fatalf("Convert() error = %v", err)
-	}
+	require.NoError(t, err)
 
-	if !strings.Contains(result, `id="section"`) {
-		t.Errorf("expected first heading with id=\"section\", got %q", result)
-	}
-	if !strings.Contains(result, `id="section-1"`) {
-		t.Errorf("expected second heading with id=\"section-1\", got %q", result)
-	}
-	if !strings.Contains(result, `id="section-2"`) {
-		t.Errorf("expected third heading with id=\"section-2\", got %q", result)
-	}
-
-	if !strings.Contains(result, `href="#section-1"`) {
-		t.Errorf("expected anchor href matching duplicate id, got %q", result)
-	}
+	assert.Contains(t, result, `id="section"`)
+	assert.Contains(t, result, `id="section-1"`)
+	assert.Contains(t, result, `id="section-2"`)
+	assert.Contains(t, result, `href="#section-1"`)
 }
 
 func TestHeadingRenderer_CustomID(t *testing.T) {
@@ -108,16 +78,10 @@ func TestHeadingRenderer_CustomID(t *testing.T) {
 
 	input := "## Section {#custom-id}"
 	result, err := converter.Convert([]byte(input))
-	if err != nil {
-		t.Fatalf("Convert() error = %v", err)
-	}
+	require.NoError(t, err)
 
-	if !strings.Contains(result, `id="custom-id"`) {
-		t.Errorf("expected custom id, got %q", result)
-	}
-	if !strings.Contains(result, `href="#custom-id"`) {
-		t.Errorf("expected anchor with custom id, got %q", result)
-	}
+	assert.Contains(t, result, `id="custom-id"`)
+	assert.Contains(t, result, `href="#custom-id"`)
 }
 
 func TestHeadingRenderer_AnchorStructure(t *testing.T) {
@@ -125,21 +89,11 @@ func TestHeadingRenderer_AnchorStructure(t *testing.T) {
 
 	input := "## My Section"
 	result, err := converter.Convert([]byte(input))
-	if err != nil {
-		t.Fatalf("Convert() error = %v", err)
-	}
+	require.NoError(t, err)
 
-	// Anchor has the correct class
-	if !strings.Contains(result, `class="heading-anchor"`) {
-		t.Errorf("expected heading-anchor class, got %q", result)
-	}
+	assert.Contains(t, result, `class="heading-anchor"`)
+	assert.Contains(t, result, `">#</a>`)
 
-	// Anchor content is #
-	if !strings.Contains(result, `">#</a>`) {
-		t.Errorf("expected # as anchor content, got %q", result)
-	}
-
-	// Anchor appears after heading text
 	anchorIdx := strings.Index(result, `<a href="#my-section"`)
 	textIdx := strings.Index(result, "My Section")
 	if anchorIdx == -1 || textIdx == -1 || anchorIdx <= textIdx {

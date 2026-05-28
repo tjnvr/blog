@@ -1,10 +1,12 @@
 package navigation
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/tjnvr/blog/internal/generator/section"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewValidator(t *testing.T) {
@@ -13,13 +15,8 @@ func TestNewValidator(t *testing.T) {
 		{DirName: "posts", DisplayName: "Posts"},
 		{DirName: "about", DisplayName: "About"},
 	})
-	if v == nil {
-		t.Fatal("NewValidator returned nil")
-		return
-	}
-	if len(v.sections) != 3 {
-		t.Errorf("expected 3 sections (home + 2), got %d", len(v.sections))
-	}
+	require.NotNil(t, v)
+	assert.Len(t, v.sections, 3)
 }
 
 func TestValidator_Validate(t *testing.T) {
@@ -140,9 +137,7 @@ func TestValidator_Validate(t *testing.T) {
 			v := NewValidator(tt.sections)
 			errs := v.Validate("test.html", "/build", []byte(tt.html))
 
-			if len(errs) != tt.wantErrors {
-				t.Errorf("Validate() returned %d errors, want %d: %v", len(errs), tt.wantErrors, errs)
-			}
+			assert.Len(t, errs, tt.wantErrors)
 
 			if len(tt.wantMsg) > 0 {
 				allErrs := ""
@@ -150,9 +145,7 @@ func TestValidator_Validate(t *testing.T) {
 					allErrs += e.Error() + "\n"
 				}
 				for _, msg := range tt.wantMsg {
-					if !strings.Contains(allErrs, msg) {
-						t.Errorf("expected error containing %q, got:\n%s", msg, allErrs)
-					}
+					assert.Contains(t, allErrs, msg)
 				}
 			}
 		})

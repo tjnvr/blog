@@ -3,6 +3,10 @@ package substitution
 import (
 	"fmt"
 	"testing"
+
+	"github.com/spf13/afero"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type fakeSubstituter struct {
@@ -15,33 +19,23 @@ func (f fakeSubstituter) Placeholder() string      { return f.placeholder }
 func (f fakeSubstituter) Resolve() (string, error) { return f.resolution, f.err }
 
 func TestNewRegistry(t *testing.T) {
-	r := NewRegistry("/content/posts/index.md")
-	if r == nil {
-		t.Fatal("NewRegistry() returned nil")
-	}
-	if len(r.substitutions) != 1 {
-		t.Errorf("NewRegistry() should have 1 default substituter, got %d", len(r.substitutions))
-	}
+	r := NewRegistry("/content/posts/index.md", afero.NewMemMapFs())
+	require.NotNil(t, r)
+	assert.Len(t, r.substitutions, 1)
 }
 
 func TestNewRegistryWithSubstituters(t *testing.T) {
 	t.Run("empty registry", func(t *testing.T) {
 		r := NewRegistryWithSubstituters()
-		if r == nil {
-			t.Fatal("NewRegistryWithSubstituters() returned nil")
-		}
-		if len(r.substitutions) != 0 {
-			t.Errorf("expected 0 substituters, got %d", len(r.substitutions))
-		}
+		require.NotNil(t, r)
+		assert.Len(t, r.substitutions, 0)
 	})
 
 	t.Run("custom substituters", func(t *testing.T) {
 		s1 := fakeSubstituter{placeholder: "{{a}}", resolution: "A"}
 		s2 := fakeSubstituter{placeholder: "{{b}}", resolution: "B"}
 		r := NewRegistryWithSubstituters(s1, s2)
-		if len(r.substitutions) != 2 {
-			t.Errorf("expected 2 substituters, got %d", len(r.substitutions))
-		}
+		assert.Len(t, r.substitutions, 2)
 	})
 }
 
@@ -93,17 +87,11 @@ func TestRegistry_Apply(t *testing.T) {
 			r := NewRegistryWithSubstituters(tt.subs...)
 			got, err := r.Apply(tt.content)
 			if tt.wantErr {
-				if err == nil {
-					t.Error("Apply() expected error, got nil")
-				}
+				require.Error(t, err)
 				return
 			}
-			if err != nil {
-				t.Fatalf("Apply() unexpected error: %v", err)
-			}
-			if got != tt.want {
-				t.Errorf("Apply() = %q, want %q", got, tt.want)
-			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }

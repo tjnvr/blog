@@ -8,6 +8,8 @@ import (
 	"github.com/tjnvr/blog/internal/generator/page/html/validation/navigation"
 	"github.com/tjnvr/blog/internal/generator/page/html/validation/script"
 	"github.com/tjnvr/blog/internal/generator/section"
+
+	"github.com/spf13/afero"
 )
 
 // Registry manages validators and runs them on HTML content
@@ -16,11 +18,9 @@ type Registry struct {
 }
 
 // NewRegistry creates a validation registry with the navigation validator configured for the given sections
-func NewRegistry(sections []section.Section, skipURLValidation bool) *Registry {
-	lv := link.NewValidator()
-	lv.SkipExternal = skipURLValidation
-	iv := image.NewValidator()
-	iv.SkipExternal = skipURLValidation
+func NewRegistry(fs afero.Fs, sections []section.Section, skipURLValidation bool) *Registry {
+	lv := link.NewValidator(fs, skipURLValidation)
+	iv := image.NewValidator(fs, skipURLValidation)
 	return &Registry{
 		validators: []Validator{
 			lv,
@@ -38,16 +38,12 @@ func NewRegistryWithValidators(validators ...Validator) *Registry {
 }
 
 // NewDefaultRegistry creates a validation registry with default validators (image, script, link, navigation)
-func NewDefaultRegistry(sections []section.Section, skipURLValidation bool) *Registry {
-	lv := link.NewValidator()
-	lv.SkipExternal = skipURLValidation
-	iv := image.NewValidator()
-	iv.SkipExternal = skipURLValidation
+func NewDefaultRegistry(fs afero.Fs, sections []section.Section, skipURLValidation bool) *Registry {
 	return &Registry{
 		validators: []Validator{
-			iv,
-			script.NewValidator(),
-			lv,
+			image.NewValidator(fs, skipURLValidation),
+			script.NewValidator(fs),
+			link.NewValidator(fs, skipURLValidation),
 			navigation.NewValidator(sections),
 		},
 	}
@@ -62,7 +58,7 @@ func (r *Registry) Register(v Validator) {
 func (r *Registry) Validate(htmlPath, buildDir string, content []byte) error {
 	var errs []error
 	for _, v := range r.validators {
-		errs = append(errs, v.Validate(htmlPath, buildDir, content)...)
+		errs = append(errs, v.Validate(htmlPath)...)
 	}
 	if len(errs) > 0 {
 		return errors.Join(errs...)

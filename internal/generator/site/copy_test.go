@@ -5,14 +5,18 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/spf13/afero"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCopyDir(t *testing.T) {
 	tests := []struct {
 		name          string
-		srcFiles      map[string]string // relative path -> content
+		srcFiles      map[string]string
 		filter        func(string) bool
-		expectedFiles []string // relative paths expected in destDir
+		expectedFiles []string
 		wantErr       bool
 	}{
 		{
@@ -67,77 +71,54 @@ func TestCopyDir(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tmpDir := t.TempDir()
-			srcDir := filepath.Join(tmpDir, "src")
-			destDir := filepath.Join(tmpDir, "dest")
+			fs := afero.NewMemMapFs()
+			srcDir := "/src"
+			destDir := "/dest"
 
-			if err := os.MkdirAll(srcDir, 0755); err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, fs.MkdirAll(srcDir, 0755))
 
 			for relPath, content := range tt.srcFiles {
 				fullPath := filepath.Join(srcDir, relPath)
-				if err := os.MkdirAll(filepath.Dir(fullPath), 0755); err != nil {
-					t.Fatal(err)
-				}
-				if err := os.WriteFile(fullPath, []byte(content), 0644); err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, fs.MkdirAll(filepath.Dir(fullPath), 0755))
+				require.NoError(t, afero.WriteFile(fs, fullPath, []byte(content), 0644))
 			}
 
-			err := copyDir(srcDir, destDir, tt.filter)
-
-			if (err != nil) != tt.wantErr {
-				t.Errorf("copyDir() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
+			err := copyDir(fs, srcDir, destDir, tt.filter)
 
 			if tt.wantErr {
+				require.Error(t, err)
 				return
 			}
+			require.NoError(t, err)
 
 			for _, expectedFile := range tt.expectedFiles {
 				destPath := filepath.Join(destDir, expectedFile)
-				if _, err := os.Stat(destPath); os.IsNotExist(err) {
-					t.Errorf("expected file %s not found in dest", expectedFile)
+				if _, err := fs.Stat(destPath); err != nil {
+					assert.NoError(t, err, "expected file %s not found in dest", expectedFile)
 					continue
 				}
 
-				srcPath := filepath.Join(srcDir, expectedFile)
-				srcContent, _ := os.ReadFile(srcPath)
-				destContent, _ := os.ReadFile(destPath)
-
-				if string(srcContent) != string(destContent) {
-					t.Errorf("content mismatch for %s: got %q, want %q", expectedFile, destContent, srcContent)
-				}
+				srcContent, _ := afero.ReadFile(fs, filepath.Join(srcDir, expectedFile))
+				destContent, _ := afero.ReadFile(fs, destPath)
+				assert.Equal(t, string(srcContent), string(destContent))
 			}
 
-			// Verify no extra files were copied
 			var copiedFiles []string
-			_ = filepath.WalkDir(destDir, func(path string, d os.DirEntry, err error) error {
-				if err != nil || d.IsDir() {
+			_ = afero.Walk(fs, destDir, func(path string, info os.FileInfo, err error) error {
+				if err != nil || info.IsDir() {
 					return err
 				}
 				relPath, _ := filepath.Rel(destDir, path)
 				copiedFiles = append(copiedFiles, relPath)
 				return nil
 			})
-
-			if len(copiedFiles) != len(tt.expectedFiles) {
-				t.Errorf("got %d files, want %d\ngot: %v\nwant: %v",
-					len(copiedFiles), len(tt.expectedFiles), copiedFiles, tt.expectedFiles)
-			}
+			assert.Len(t, copiedFiles, len(tt.expectedFiles))
 		})
 	}
 }
 
 func TestCopyDir_NonExistentSource(t *testing.T) {
-	tmpDir := t.TempDir()
-	srcDir := filepath.Join(tmpDir, "nonexistent")
-	destDir := filepath.Join(tmpDir, "dest")
-
-	err := copyDir(srcDir, destDir, nil)
-	if err == nil {
-		t.Error("expected error for non-existent source directory")
-	}
+	fs := afero.NewMemMapFs()
+	err := copyDir(fs, "/nonexistent", "/dest", nil)
+	assert.Error(t, err)
 }

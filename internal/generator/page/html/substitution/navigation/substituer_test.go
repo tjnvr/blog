@@ -1,17 +1,17 @@
 package navigation
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/tjnvr/blog/internal/generator/section"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSubstituer_Placeholder(t *testing.T) {
 	s := NewSubstituer(nil, "")
-	if got := s.Placeholder(); got != "{{navigation}}" {
-		t.Errorf("Placeholder() = %q, want %q", got, "{{navigation}}")
-	}
+	assert.Equal(t, "{{navigation}}", s.Placeholder())
 }
 
 func TestSubstituer_Resolve(t *testing.T) {
@@ -111,18 +111,12 @@ func TestSubstituer_Resolve(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			s := NewSubstituer(tt.sections, tt.currentSection)
 			got, err := s.Resolve("")
-			if err != nil {
-				t.Fatalf("Resolve() unexpected error: %v", err)
-			}
+			require.NoError(t, err)
 			for _, substr := range tt.wantContains {
-				if !strings.Contains(got, substr) {
-					t.Errorf("Resolve() should contain %q, got:\n%s", substr, got)
-				}
+				assert.Contains(t, got, substr)
 			}
 			for _, substr := range tt.wantNotContain {
-				if strings.Contains(got, substr) {
-					t.Errorf("Resolve() should not contain %q, got:\n%s", substr, got)
-				}
+				assert.NotContains(t, got, substr)
 			}
 		})
 	}
@@ -141,9 +135,7 @@ func TestRelativePrefix(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.section, func(t *testing.T) {
-			if got := relativePrefix(tt.section); got != tt.want {
-				t.Errorf("relativePrefix(%q) = %q, want %q", tt.section, got, tt.want)
-			}
+			assert.Equal(t, tt.want, relativePrefix(tt.section))
 		})
 	}
 }
@@ -154,15 +146,9 @@ func TestSubstituer_Resolve_DisplayNameFromSection(t *testing.T) {
 		{DirName: "posts", DisplayName: "My Blog Posts"},
 	}, "")
 	got, err := s.Resolve("")
-	if err != nil {
-		t.Fatalf("Resolve() unexpected error: %v", err)
-	}
-	if !strings.Contains(got, "My Blog Posts") {
-		t.Errorf("display name should come from Section.DisplayName, got:\n%s", got)
-	}
-	if !strings.Contains(got, `href="posts/index.html"`) {
-		t.Errorf("href should use Section.DirName, got:\n%s", got)
-	}
+	require.NoError(t, err)
+	assert.Contains(t, got, "My Blog Posts")
+	assert.Contains(t, got, `href="posts/index.html"`)
 }
 
 func TestSubstituer_Resolve_ActiveSection(t *testing.T) {
@@ -186,18 +172,12 @@ func TestSubstituer_Resolve_ActiveSection(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			s := NewSubstituer(sections, tt.currentSection)
 			got, err := s.Resolve("")
-			if err != nil {
-				t.Fatalf("Resolve() unexpected error: %v", err)
-			}
+			require.NoError(t, err)
 			for _, sec := range sections {
 				if sec.DirName == tt.activeDirName {
-					if !strings.Contains(got, `class="font-semibold underline">`+sec.DisplayName) {
-						t.Errorf("active section %q should have font-semibold class, got:\n%s", sec.DisplayName, got)
-					}
+					assert.Contains(t, got, `class="font-semibold underline">`+sec.DisplayName)
 				} else {
-					if strings.Contains(got, `class="font-semibold underline">`+sec.DisplayName) {
-						t.Errorf("inactive section %q should not have font-semibold class, got:\n%s", sec.DisplayName, got)
-					}
+					assert.NotContains(t, got, `class="font-semibold underline">`+sec.DisplayName)
 				}
 			}
 		})

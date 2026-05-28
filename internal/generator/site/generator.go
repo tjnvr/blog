@@ -4,17 +4,18 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/tjnvr/blog/internal/generator/page/filesystem"
 	"github.com/tjnvr/blog/internal/generator/section"
+
+	"github.com/spf13/afero"
 )
 
 type (
 	PageGenerator interface {
-		Generate() error
-		Validate() error
+		Generate(sourceMarkdownFilePath, destinationHTMLFilePath string) error
+		Validate(HTMLFilePath string) error
 	}
 
-	pageGeneratorFactory func(sourceMDPath, destinationHTMLPath, buildDir, pageSection string, assetsPathTranslater, linksPathTranslater newPathResolver, sections []section.Section, skipURLValidation bool) PageGenerator
+	pageGeneratorFactory func(buildDir, pageSection string, assetsPathTranslater, linksPathTranslater newPathResolver, sections []section.Section, skipURLValidation bool) PageGenerator
 
 	Option func(*Generator)
 )
@@ -32,7 +33,7 @@ type Generator struct {
 	pageGeneratorFactory pageGeneratorFactory
 	sections             []section.Section
 	pagesGenerators      []PageGenerator
-	fs                   filesystem.FileSystem
+	fs                   afero.Fs
 }
 
 // WithSkipURLValidation returns an Option that disables external URL validation.
@@ -40,7 +41,7 @@ func WithSkipURLValidation(skip bool) Option {
 	return func(g *Generator) { g.skipURLValidation = skip }
 }
 
-func NewGenerator(opts ...Option) (*Generator, error) {
+func NewGenerator(fs afero.Fs, opts ...Option) (*Generator, error) {
 	g := &Generator{
 		contentDir:           "./content/markdown",
 		buildDir:             "./target/build",
@@ -50,8 +51,8 @@ func NewGenerator(opts ...Option) (*Generator, error) {
 		scriptsOutDir:        "./target/build/scripts",
 		sections:             make([]section.Section, 0),
 		pagesGenerators:      make([]PageGenerator, 0),
-		pageGeneratorFactory: defaultPageGeneratorFactory,
-		fs:                   filesystem.NewOSFileSystem(),
+		pageGeneratorFactory: newPageGeneratorFactory(fs),
+		fs:                   fs,
 	}
 
 	for _, opt := range opts {

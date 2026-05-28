@@ -2,6 +2,8 @@ package shared
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestIsExternalURL(t *testing.T) {
@@ -21,9 +23,7 @@ func TestIsExternalURL(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.src, func(t *testing.T) {
 			got := IsExternalURL(tt.src)
-			if got != tt.want {
-				t.Errorf("IsExternalURL(%q) = %v, want %v", tt.src, got, tt.want)
-			}
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -69,9 +69,7 @@ func TestResolveLocalPath(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := ResolveLocalPath(tt.src, tt.htmlPath, tt.buildDir)
-			if got != tt.want {
-				t.Errorf("ResolveLocalPath(%q, %q, %q) = %q, want %q", tt.src, tt.htmlPath, tt.buildDir, got, tt.want)
-			}
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }

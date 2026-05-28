@@ -3,6 +3,9 @@ package listing
 import (
 	"fmt"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type fakePrinter struct {
@@ -22,9 +25,7 @@ func (f fakeLister) ListPrinters() ([]fakePrinter, error) {
 
 func TestNewSubstituer(t *testing.T) {
 	s := NewSubstituer("{{placeholder}}", fakeLister{}, "\n")
-	if s.Placeholder() != "{{placeholder}}" {
-		t.Errorf("Placeholder() = %q, want %q", s.Placeholder(), "{{placeholder}}")
-	}
+	assert.Equal(t, "{{placeholder}}", s.Placeholder())
 }
 
 func TestSubstituer_Resolve(t *testing.T) {
@@ -72,17 +73,11 @@ func TestSubstituer_Resolve(t *testing.T) {
 			s := NewSubstituer("{{x}}", lister, tt.separator)
 			got, err := s.Resolve()
 			if tt.wantErr {
-				if err == nil {
-					t.Error("Resolve() expected error, got nil")
-				}
+				require.Error(t, err)
 				return
 			}
-			if err != nil {
-				t.Fatalf("Resolve() unexpected error: %v", err)
-			}
-			if got != tt.want {
-				t.Errorf("Resolve() = %q, want %q", got, tt.want)
-			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }

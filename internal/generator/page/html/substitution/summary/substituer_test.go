@@ -4,13 +4,12 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSubstituter_Placeholder(t *testing.T) {
 	s := NewSubstituer()
-	if s.Placeholder() != "<p>{{summary}}</p>" {
-		t.Errorf("Placeholder() = %q, want %q", s.Placeholder(), "<p>{{summary}}</p>")
-	}
+	assert.Equal(t, "<p>{{summary}}</p>", s.Placeholder())
 }
 
 func TestSubstituter_Resolve(t *testing.T) {
@@ -118,14 +117,10 @@ func TestSubstituter_Resolve(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result, err := s.Resolve(tt.content)
-			if err != nil {
-				t.Fatalf("Resolve() error = %v", err)
-			}
+			require.NoError(t, err)
 
 			if tt.empty {
-				if result != "" {
-					t.Errorf("Resolve() = %q, want empty string", result)
-				}
+				assert.Empty(t, result)
 				return
 			}
 

@@ -1,19 +1,16 @@
 package markdown
 
 import (
-	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewConverter(t *testing.T) {
 	converter := NewConverter()
-	if converter == nil {
-		t.Fatal("NewConverter returned nil")
-		return
-	}
-	if converter.md == nil {
-		t.Fatal("converter.md is nil")
-	}
+	require.NotNil(t, converter)
+	require.NotNil(t, converter.md)
 }
 
 func TestConverter_Convert(t *testing.T) {
@@ -89,14 +86,9 @@ func TestConverter_Convert(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result, err := converter.Convert([]byte(tt.input))
-			if err != nil {
-				t.Fatalf("Convert() error = %v", err)
-			}
-
+			require.NoError(t, err)
 			for _, substr := range tt.contains {
-				if !strings.Contains(result, substr) {
-					t.Errorf("Convert() result should contain %q, got %q", substr, result)
-				}
+				assert.Contains(t, result, substr)
 			}
 		})
 	}
@@ -107,25 +99,11 @@ func TestConverter_Convert_ReturnsValidHTML(t *testing.T) {
 
 	input := "# Title\n\nParagraph with **bold** and *italic*.\n\n- List item"
 	result, err := converter.Convert([]byte(input))
-	if err != nil {
-		t.Fatalf("Convert() error = %v", err)
-	}
-
-	// Check that result is not empty
-	if len(result) == 0 {
-		t.Error("Convert() returned empty result")
-	}
-
-	// Check basic structure
-	if !strings.Contains(result, `<h1 id="title">`) {
-		t.Error("missing h1 tag")
-	}
-	if !strings.Contains(result, "<p>") {
-		t.Error("missing p tag")
-	}
-	if !strings.Contains(result, "<ul>") {
-		t.Error("missing ul tag")
-	}
+	require.NoError(t, err)
+	assert.NotEmpty(t, result)
+	assert.Contains(t, result, `<h1 id="title">`)
+	assert.Contains(t, result, "<p>")
+	assert.Contains(t, result, "<ul>")
 }
 
 func TestConverter_InlineAttributes(t *testing.T) {
@@ -166,14 +144,9 @@ func TestConverter_InlineAttributes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result, err := converter.Convert([]byte(tt.input))
-			if err != nil {
-				t.Fatalf("Convert() error = %v", err)
-			}
-
+			require.NoError(t, err)
 			for _, substr := range tt.contains {
-				if !strings.Contains(result, substr) {
-					t.Errorf("Convert() result should contain %q, got %q", substr, result)
-				}
+				assert.Contains(t, result, substr)
 			}
 		})
 	}

@@ -5,27 +5,29 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/spf13/afero"
 )
 
 func (g *Generator) copyAssets() error {
-	return copyDir(g.assetsDir, filepath.Join(g.buildDir, "assets"), nil)
+	return copyDir(g.fs, g.assetsDir, filepath.Join(g.buildDir, "assets"), nil)
 }
 
 func (g *Generator) copyScripts() error {
-	return copyDir(g.scriptsDir, filepath.Join(g.buildDir, "scripts"), func(path string) bool {
+	return copyDir(g.fs, g.scriptsDir, filepath.Join(g.buildDir, "scripts"), func(path string) bool {
 		return strings.HasSuffix(path, ".js")
 	})
 }
 
-// copyDir copies files from srcDir to destDir, optionally filtering by the provided function.
+// copyDir copies files from srcDir to destDir using fs, optionally filtering by the provided function.
 // If filter is nil, all files are copied. If filter returns true, the file is copied.
-func copyDir(srcDir, destDir string, filter func(path string) bool) error {
-	return filepath.WalkDir(srcDir, func(path string, d os.DirEntry, err error) error {
+func copyDir(fs afero.Fs, srcDir, destDir string, filter func(path string) bool) error {
+	return afero.Walk(fs, srcDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
 
-		if d.IsDir() {
+		if info.IsDir() {
 			return nil
 		}
 
@@ -40,16 +42,16 @@ func copyDir(srcDir, destDir string, filter func(path string) bool) error {
 
 		outPath := filepath.Join(destDir, relPath)
 
-		data, err := os.ReadFile(path)
+		data, err := afero.ReadFile(fs, path)
 		if err != nil {
 			return fmt.Errorf("reading %s: %w", path, err)
 		}
 
-		if err := os.MkdirAll(filepath.Dir(outPath), 0755); err != nil {
+		if err := fs.MkdirAll(filepath.Dir(outPath), 0755); err != nil {
 			return fmt.Errorf("creating directory for %s: %w", outPath, err)
 		}
 
-		if err := os.WriteFile(outPath, data, 0644); err != nil {
+		if err := afero.WriteFile(fs, outPath, data, 0644); err != nil {
 			return fmt.Errorf("writing %s: %w", outPath, err)
 		}
 		fmt.Printf("Copied: %s -> %s\n", relPath, outPath)

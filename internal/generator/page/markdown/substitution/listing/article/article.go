@@ -2,13 +2,14 @@ package article
 
 import (
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 
 	"github.com/tjnvr/blog/internal/generator/page/markdown/metadata"
+
+	"github.com/spf13/afero"
 )
 
 type Article struct {
@@ -26,18 +27,20 @@ func (a Article) Print() string {
 
 type ListPageArticles struct {
 	indexFilePath string
+	fs            afero.Fs
 }
 
-func NewPageArticlesLister(indexFilePath string) ListPageArticles {
+func NewPageArticlesLister(indexFilePath string, fs afero.Fs) ListPageArticles {
 	return ListPageArticles{
 		indexFilePath: indexFilePath,
+		fs:            fs,
 	}
 }
 
 func (la ListPageArticles) ListPrinters() ([]Article, error) {
 	articles := make([]Article, 0)
 	dir := filepath.Dir(la.indexFilePath)
-	if err := filepath.Walk(dir, func(path string, info fs.FileInfo, err error) error {
+	if err := afero.Walk(la.fs, dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -49,7 +52,7 @@ func (la ListPageArticles) ListPrinters() ([]Article, error) {
 		if filepath.Dir(path) != dir || filepath.Ext(path) != ".md" || path == la.indexFilePath {
 			return nil
 		}
-		data, err := os.ReadFile(path)
+		data, err := afero.ReadFile(la.fs, path)
 		if err != nil {
 			return err
 		}

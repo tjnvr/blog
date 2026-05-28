@@ -5,6 +5,10 @@ import (
 	"testing"
 
 	"github.com/tjnvr/blog/internal/generator/section"
+
+	"github.com/spf13/afero"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // fakeValidator is a test double implementing Validator
@@ -22,36 +26,21 @@ func TestNewRegistry(t *testing.T) {
 		{DirName: "posts", DisplayName: "Posts"},
 		{DirName: "about", DisplayName: "About"},
 	}
-	r := NewRegistry(sections, false)
-	if r == nil {
-		t.Fatal("NewRegistry() returned nil")
-		return
-	}
-	if len(r.validators) != 3 {
-		t.Errorf("NewRegistry() should have 3 validator (link, image, navigation), got %d", len(r.validators))
-	}
+	r := NewRegistry(afero.NewMemMapFs(), sections, false)
+	require.NotNil(t, r)
+	assert.Len(t, r.validators, 3)
 }
 
 func TestNewRegistryWithValidators(t *testing.T) {
 	r := NewRegistryWithValidators()
-	if r == nil {
-		t.Fatal("NewRegistryWithValidators() returned nil")
-		return
-	}
-	if len(r.validators) != 0 {
-		t.Errorf("NewRegistryWithValidators() should have 0 validators, got %d", len(r.validators))
-	}
+	require.NotNil(t, r)
+	assert.Len(t, r.validators, 0)
 }
 
 func TestNewDefaultRegistry(t *testing.T) {
-	r := NewDefaultRegistry([]section.Section{{DirName: "", DisplayName: "Accueil"}, {DirName: "posts", DisplayName: "Posts"}}, false)
-	if r == nil {
-		t.Fatal("NewDefaultRegistry() returned nil")
-		return
-	}
-	if len(r.validators) != 4 {
-		t.Errorf("NewDefaultRegistry() should have 4 validators (image, script, link, navigation), got %d", len(r.validators))
-	}
+	r := NewDefaultRegistry(afero.NewMemMapFs(), []section.Section{{DirName: "", DisplayName: "Accueil"}, {DirName: "posts", DisplayName: "Posts"}}, false)
+	require.NotNil(t, r)
+	assert.Len(t, r.validators, 4)
 }
 
 func TestRegistry_Register(t *testing.T) {
@@ -59,15 +48,10 @@ func TestRegistry_Register(t *testing.T) {
 	v := fakeValidator{validateFunc: func(string, string, []byte) []error { return nil }}
 
 	r.Register(v)
-
-	if len(r.validators) != 1 {
-		t.Errorf("expected 1 validator after Register, got %d", len(r.validators))
-	}
+	assert.Len(t, r.validators, 1)
 
 	r.Register(v)
-	if len(r.validators) != 2 {
-		t.Errorf("expected 2 validators after second Register, got %d", len(r.validators))
-	}
+	assert.Len(t, r.validators, 2)
 }
 
 func TestRegistry_Validate(t *testing.T) {
@@ -141,19 +125,11 @@ func TestRegistry_Validate(t *testing.T) {
 			r := NewRegistryWithValidators(tt.validators...)
 			err := r.Validate("test.html", "/build", []byte("<html></html>"))
 			if tt.wantErr {
-				if err == nil {
-					t.Error("Validate() expected error, got nil")
-					return
-				}
-				// Count individual errors in the joined error
+				require.Error(t, err)
 				errParts := strings.Split(err.Error(), "\n")
-				if len(errParts) != tt.errCount {
-					t.Errorf("Validate() expected %d errors, got %d: %v", tt.errCount, len(errParts), err)
-				}
+				assert.Len(t, errParts, tt.errCount)
 			} else {
-				if err != nil {
-					t.Errorf("Validate() unexpected error: %v", err)
-				}
+				assert.NoError(t, err)
 			}
 		})
 	}
@@ -161,14 +137,7 @@ func TestRegistry_Validate(t *testing.T) {
 
 func TestNewError(t *testing.T) {
 	err := NewError("page.html", "missing image %s", "logo.png")
-	if err.File != "page.html" {
-		t.Errorf("File = %q, want %q", err.File, "page.html")
-	}
-	if err.Message != "missing image logo.png" {
-		t.Errorf("Message = %q, want %q", err.Message, "missing image logo.png")
-	}
-	expected := "page.html: missing image logo.png"
-	if err.Error() != expected {
-		t.Errorf("Error() = %q, want %q", err.Error(), expected)
-	}
+	assert.Equal(t, "page.html", err.File)
+	assert.Equal(t, "missing image logo.png", err.Message)
+	assert.Equal(t, "page.html: missing image logo.png", err.Error())
 }

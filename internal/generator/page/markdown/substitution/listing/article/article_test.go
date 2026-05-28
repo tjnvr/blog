@@ -1,9 +1,12 @@
 package article
 
 import (
-	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/spf13/afero"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestArticlePrint(t *testing.T) {
@@ -25,9 +28,7 @@ func TestArticlePrint(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.a.Print(); got != tt.want {
-				t.Errorf("Print() = %q, want %q", got, tt.want)
-			}
+			assert.Equal(t, tt.want, tt.a.Print())
 		})
 	}
 }
@@ -47,10 +48,7 @@ func TestExtractTitle(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := extractTitle([]byte(tt.input))
-			if got != tt.want {
-				t.Errorf("extractTitle() = %q, want %q", got, tt.want)
-			}
+			assert.Equal(t, tt.want, extractTitle([]byte(tt.input)))
 		})
 	}
 }
@@ -58,8 +56,8 @@ func TestExtractTitle(t *testing.T) {
 func TestListPrinters(t *testing.T) {
 	tests := []struct {
 		name      string
-		files     map[string]string // relative path -> content
-		indexFile string            // relative path of the index file
+		files     map[string]string
+		indexFile string
 		wantNames []string
 		wantErr   bool
 	}{
@@ -103,42 +101,28 @@ func TestListPrinters(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			dir := t.TempDir()
+			fs := afero.NewMemMapFs()
+			dir := "/content"
 			for relPath, content := range tt.files {
 				fullPath := filepath.Join(dir, relPath)
-				if err := os.MkdirAll(filepath.Dir(fullPath), 0755); err != nil {
-					t.Fatalf("MkdirAll: %v", err)
-				}
-				if err := os.WriteFile(fullPath, []byte(content), 0644); err != nil {
-					t.Fatalf("WriteFile: %v", err)
-				}
+				require.NoError(t, fs.MkdirAll(filepath.Dir(fullPath), 0755))
+				require.NoError(t, afero.WriteFile(fs, fullPath, []byte(content), 0644))
 			}
 
-			lister := NewPageArticlesLister(filepath.Join(dir, tt.indexFile))
+			lister := NewPageArticlesLister(filepath.Join(dir, tt.indexFile), fs)
 			articles, err := lister.ListPrinters()
 			if tt.wantErr {
-				if err == nil {
-					t.Error("expected error, got nil")
-				}
+				require.Error(t, err)
 				return
 			}
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
+			require.NoError(t, err)
+			require.Len(t, articles, len(tt.wantNames))
 
-			if len(articles) != len(tt.wantNames) {
-				t.Fatalf("got %d articles, want %d", len(articles), len(tt.wantNames))
-			}
-
-			gotNames := make(map[string]bool)
+			actualNames := make([]string, 0, len(articles))
 			for _, a := range articles {
-				gotNames[a.name] = true
+				actualNames = append(actualNames, a.name)
 			}
-			for _, name := range tt.wantNames {
-				if !gotNames[name] {
-					t.Errorf("missing article with name %q", name)
-				}
-			}
+			assert.ElementsMatch(t, tt.wantNames, actualNames)
 		})
 	}
 }

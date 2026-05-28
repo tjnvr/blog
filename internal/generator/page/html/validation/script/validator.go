@@ -2,22 +2,24 @@ package script
 
 import (
 	"fmt"
-	"os"
 	"regexp"
 
-	jsparser "github.com/dop251/goja/parser"
-
 	"github.com/tjnvr/blog/internal/generator/page/html/validation/shared"
+
+	jsparser "github.com/dop251/goja/parser"
+	"github.com/spf13/afero"
 )
 
 // Validator checks that all scripts in HTML are accessible
 type Validator struct {
+	fs          afero.Fs
 	scriptRegex *regexp.Regexp
 }
 
 // NewValidator creates a new script validator
-func NewValidator() *Validator {
+func NewValidator(fs afero.Fs) *Validator {
 	return &Validator{
+		fs:          fs,
 		scriptRegex: regexp.MustCompile(`<script[^>]+src="([^"]+)"`),
 	}
 }
@@ -43,7 +45,7 @@ func (v *Validator) Validate(htmlPath, buildDir string, content []byte) []error 
 
 		scriptPath := shared.ResolveLocalPath(src, htmlPath, buildDir)
 
-		if _, err := os.Stat(scriptPath); os.IsNotExist(err) {
+		if _, err := v.fs.Stat(scriptPath); err != nil {
 			errs = append(errs, fmt.Errorf("%s: local script not found: %s", htmlPath, src))
 			continue
 		}
@@ -59,7 +61,7 @@ func (v *Validator) Validate(htmlPath, buildDir string, content []byte) []error 
 
 // validateJSSyntax parses the JavaScript file and returns any syntax errors
 func (v *Validator) validateJSSyntax(scriptPath string) []error {
-	content, err := os.ReadFile(scriptPath)
+	content, err := afero.ReadFile(v.fs, scriptPath)
 	if err != nil {
 		return []error{fmt.Errorf("%s: failed to read script: %w", scriptPath, err)}
 	}

@@ -2,13 +2,14 @@ package title
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSubstituer_Placeholder(t *testing.T) {
 	s := NewSubstituer()
-	if got := s.Placeholder(); got != "{{title}}" {
-		t.Errorf("Placeholder() = %q, want %q", got, "{{title}}")
-	}
+	assert.Equal(t, "{{title}}", s.Placeholder())
 }
 
 func TestSubstituer_Resolve(t *testing.T) {
@@ -60,17 +61,11 @@ func TestSubstituer_Resolve(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := s.Resolve(tt.content)
 			if tt.wantErr {
-				if err == nil {
-					t.Error("Resolve() expected error, got nil")
-				}
+				require.Error(t, err)
 				return
 			}
-			if err != nil {
-				t.Fatalf("Resolve() unexpected error: %v", err)
-			}
-			if got != tt.want {
-				t.Errorf("Resolve() = %q, want %q", got, tt.want)
-			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }

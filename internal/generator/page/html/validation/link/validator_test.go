@@ -3,56 +3,33 @@ package link
 import (
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/spf13/afero"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewValidator(t *testing.T) {
-	v := NewValidator()
-	if v == nil {
-		t.Fatal("NewValidator returned nil")
-		return
-	}
-	if v.Timeout != 10*time.Second {
-		t.Errorf("expected timeout 10s, got %v", v.Timeout)
-	}
-	if v.SkipExternal {
-		t.Error("SkipExternal should be false by default")
-	}
+	v := NewValidator(afero.NewMemMapFs(), false)
+	require.NotNil(t, v)
+	assert.Equal(t, 10*time.Second, v.Timeout)
+	assert.False(t, v.SkipExternal)
 }
 
 func TestValidator_ValidateLocalLink(t *testing.T) {
-	// Create temp directory structure
-	buildDir := t.TempDir()
-	pagesDir := filepath.Join(buildDir, "pages")
-	if err := os.MkdirAll(pagesDir, 0755); err != nil {
-		t.Fatalf("failed to create pages dir: %v", err)
-	}
+	fs := afero.NewMemMapFs()
+	buildDir := "/build"
 
-	// Create a test HTML file
-	aboutPath := filepath.Join(pagesDir, "about.html")
-	if err := os.WriteFile(aboutPath, []byte("<html></html>"), 0644); err != nil {
-		t.Fatalf("failed to create about page: %v", err)
-	}
+	_ = fs.MkdirAll("/build/pages", 0755)
+	_ = afero.WriteFile(fs, "/build/pages/about.html", []byte("<html></html>"), 0644)
 
-	// Create a directory with index.html
-	postsDir := filepath.Join(buildDir, "posts")
-	if err := os.MkdirAll(postsDir, 0755); err != nil {
-		t.Fatalf("failed to create posts dir: %v", err)
-	}
-	indexPath := filepath.Join(postsDir, "index.html")
-	if err := os.WriteFile(indexPath, []byte("<html></html>"), 0644); err != nil {
-		t.Fatalf("failed to create index page: %v", err)
-	}
+	_ = fs.MkdirAll("/build/posts", 0755)
+	_ = afero.WriteFile(fs, "/build/posts/index.html", []byte("<html></html>"), 0644)
 
-	// Create HTML file path for testing
-	htmlDir := filepath.Join(buildDir, "blog")
-	if err := os.MkdirAll(htmlDir, 0755); err != nil {
-		t.Fatalf("failed to create html dir: %v", err)
-	}
-	htmlPath := filepath.Join(htmlDir, "test.html")
+	htmlPath := "/build/blog/test.html"
 
 	tests := []struct {
 		name      string
@@ -121,21 +98,21 @@ func TestValidator_ValidateLocalLink(t *testing.T) {
 		},
 	}
 
-	v := NewValidator()
+	v := NewValidator(fs, false)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			errs := v.Validate(htmlPath, buildDir, []byte(tt.html))
-			hasError := len(errs) > 0
-			if hasError != tt.wantError {
-				t.Errorf("Validate() hasError = %v, want %v, errors: %v", hasError, tt.wantError, errs)
+			if tt.wantError {
+				assert.NotEmpty(t, errs)
+			} else {
+				assert.Empty(t, errs)
 			}
 		})
 	}
 }
 
 func TestValidator_ValidateExternalLink(t *testing.T) {
-	// Create a test HTTP server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/valid" {
 			w.WriteHeader(http.StatusOK)
@@ -145,7 +122,7 @@ func TestValidator_ValidateExternalLink(t *testing.T) {
 	}))
 	defer server.Close()
 
-	buildDir := t.TempDir()
+	buildDir := "/build"
 	htmlPath := filepath.Join(buildDir, "test.html")
 
 	tests := []struct {
@@ -165,46 +142,32 @@ func TestValidator_ValidateExternalLink(t *testing.T) {
 		},
 	}
 
-	v := NewValidator()
+	v := NewValidator(afero.NewMemMapFs(), false)
 	v.Timeout = 5 * time.Second
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			errs := v.Validate(htmlPath, buildDir, []byte(tt.html))
-			hasError := len(errs) > 0
-			if hasError != tt.wantError {
-				t.Errorf("Validate() hasError = %v, want %v, errors: %v", hasError, tt.wantError, errs)
+			if tt.wantError {
+				assert.NotEmpty(t, errs)
+			} else {
+				assert.Empty(t, errs)
 			}
 		})
 	}
 }
 
 func TestValidator_SkipExternal(t *testing.T) {
-	buildDir := t.TempDir()
-	htmlPath := filepath.Join(buildDir, "test.html")
-
-	// This URL would fail if actually checked
 	html := `<a href="http://invalid.invalid/page">Invalid</a>`
-
-	v := NewValidator()
-	v.SkipExternal = true
-
-	errs := v.Validate(htmlPath, buildDir, []byte(html))
-	if len(errs) > 0 {
-		t.Errorf("expected no errors when SkipExternal=true, got %v", errs)
-	}
+	v := NewValidator(afero.NewMemMapFs(),true)
+	errs := v.Validate("/build/test.html", "/build", []byte(html))
+	assert.Empty(t, errs)
 }
 
 func TestValidator_SkipsJavascriptLinks(t *testing.T) {
-	buildDir := t.TempDir()
-	htmlPath := filepath.Join(buildDir, "test.html")
-
 	html := `<a href="javascript:void(0)">Click</a>`
+	v := NewValidator(afero.NewMemMapFs(), false)
 
-	v := NewValidator()
-
-	errs := v.Validate(htmlPath, buildDir, []byte(html))
-	if len(errs) > 0 {
-		t.Errorf("expected no errors for javascript link, got %v", errs)
-	}
+	errs := v.Validate("/build/test.html", "/build", []byte(html))
+	assert.Empty(t, errs)
 }

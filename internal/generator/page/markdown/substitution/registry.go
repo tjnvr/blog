@@ -5,6 +5,8 @@ import (
 
 	"github.com/tjnvr/blog/internal/generator/page/markdown/substitution/listing"
 	"github.com/tjnvr/blog/internal/generator/page/markdown/substitution/listing/article"
+
+	"github.com/spf13/afero"
 )
 
 // Registry manages substitutions and applies them to templates
@@ -13,9 +15,9 @@ type Registry struct {
 }
 
 // NewRegistry creates a new substitution registry with default substituters
-func NewRegistry(filePath string) *Registry {
+func NewRegistry(filePath string, fs afero.Fs) *Registry {
 	return NewRegistryWithSubstituters(
-		listing.NewSubstituer("{{list-child-articles}}", article.NewPageArticlesLister(filePath), "\n"),
+		listing.NewSubstituer("{{list-child-articles}}", article.NewPageArticlesLister(filePath, fs), "\n"),
 	)
 }
 

@@ -2,10 +2,12 @@ package substitution
 
 import (
 	"fmt"
-	"strings"
 	"testing"
 
 	"github.com/tjnvr/blog/internal/generator/section"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // fakeSubstituter is a test double implementing Substituter
@@ -26,34 +28,22 @@ func TestNewRegistry(t *testing.T) {
 		{DirName: "about", DisplayName: "About"},
 	}
 	r := NewRegistry("output.html", "source.md", nil, nil, sections, "")
-	if r == nil {
-		t.Fatal("NewRegistry() returned nil")
-		return
-	}
-	if len(r.substitutions) != 4 {
-		t.Errorf("NewRegistry() should have 4 default substituters, got %d", len(r.substitutions))
-	}
+	require.NotNil(t, r)
+	assert.Len(t, r.substitutions, 4)
 }
 
 func TestNewRegistryWithSubstituters(t *testing.T) {
 	t.Run("empty registry", func(t *testing.T) {
 		r := NewRegistryWithSubstituters()
-		if r == nil {
-			t.Fatal("NewRegistryWithSubstituters() returned nil")
-			return
-		}
-		if len(r.substitutions) != 0 {
-			t.Errorf("expected 0 substituters, got %d", len(r.substitutions))
-		}
+		require.NotNil(t, r)
+		assert.Len(t, r.substitutions, 0)
 	})
 
 	t.Run("custom substituters", func(t *testing.T) {
 		s1 := fakeSubstituter{placeholder: "{{a}}", resolveFunc: func(string) (string, error) { return "A", nil }}
 		s2 := fakeSubstituter{placeholder: "{{b}}", resolveFunc: func(string) (string, error) { return "B", nil }}
 		r := NewRegistryWithSubstituters(s1, s2)
-		if len(r.substitutions) != 2 {
-			t.Errorf("expected 2 substituters, got %d", len(r.substitutions))
-		}
+		assert.Len(t, r.substitutions, 2)
 	})
 }
 
@@ -144,17 +134,11 @@ func TestRegistry_Apply(t *testing.T) {
 			r := NewRegistryWithSubstituters(tt.subs...)
 			got, err := r.Apply(tt.template, tt.content)
 			if tt.wantErr {
-				if err == nil {
-					t.Error("Apply() expected error, got nil")
-				}
+				require.Error(t, err)
 				return
 			}
-			if err != nil {
-				t.Fatalf("Apply() unexpected error: %v", err)
-			}
-			if got != tt.want {
-				t.Errorf("Apply() = %q, want %q", got, tt.want)
-			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -165,19 +149,10 @@ func TestRegistry_Apply_WithDefaultSubstituters(t *testing.T) {
 	content := `<h1>Test Title</h1><p>Hello world</p>`
 
 	result, err := r.Apply(template, content)
-	if err != nil {
-		t.Fatalf("Apply() unexpected error: %v", err)
-	}
-
-	if !strings.Contains(result, "<title>Test Title</title>") {
-		t.Errorf("expected title substitution, got %q", result)
-	}
-	if !strings.Contains(result, "<p>Hello world</p>") {
-		t.Errorf("expected content substitution, got %q", result)
-	}
-	if !strings.Contains(result, "<nav") {
-		t.Errorf("expected navigation substitution, got %q", result)
-	}
+	require.NoError(t, err)
+	assert.Contains(t, result, "<title>Test Title</title>")
+	assert.Contains(t, result, "<p>Hello world</p>")
+	assert.Contains(t, result, "<nav")
 }
 
 func TestRegistry_Apply_SummarySubstitution(t *testing.T) {
@@ -189,17 +164,8 @@ func TestRegistry_Apply_SummarySubstitution(t *testing.T) {
 		`<h3 id="details"><a href="#details" class="heading-anchor">#</a>Details</h3>`
 
 	result, err := r.Apply(template, content)
-	if err != nil {
-		t.Fatalf("Apply() unexpected error: %v", err)
-	}
-
-	if strings.Contains(result, "{{summary}}") {
-		t.Error("{{summary}} placeholder should have been replaced")
-	}
-	if !strings.Contains(result, `href="#intro"`) {
-		t.Errorf("expected summary link to #intro, got %q", result)
-	}
-	if !strings.Contains(result, `href="#details"`) {
-		t.Errorf("expected summary link to #details, got %q", result)
-	}
+	require.NoError(t, err)
+	assert.NotContains(t, result, "{{summary}}")
+	assert.Contains(t, result, `href="#intro"`)
+	assert.Contains(t, result, `href="#details"`)
 }

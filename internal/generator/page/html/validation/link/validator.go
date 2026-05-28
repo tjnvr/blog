@@ -3,36 +3,44 @@ package link
 import (
 	"fmt"
 	"net/http"
-	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
 
 	"github.com/tjnvr/blog/internal/generator/page/html/validation/shared"
+
+	"github.com/spf13/afero"
 )
 
 // Validator checks that all links in HTML are accessible
 type Validator struct {
+	fs afero.Fs
 	// Timeout for HTTP requests to external links
 	Timeout time.Duration
 	// SkipExternal skips validation of external URLs
 	SkipExternal bool
 	linkRegex    *regexp.Regexp
+	buildDir string
 }
 
 // NewValidator creates a new link validator with default settings
-func NewValidator() *Validator {
+func NewValidator(fs afero.Fs, skipExternalValidation bool) *Validator {
 	return &Validator{
+		fs:           fs,
 		Timeout:      10 * time.Second,
-		SkipExternal: false,
+		SkipExternal: skipExternalValidation,
 		linkRegex:    regexp.MustCompile(`<a[^>]+href="([^"]+)"`),
 	}
 }
 
 // Validate checks all anchor href attributes in the HTML content
-func (v *Validator) Validate(htmlPath, buildDir string, content []byte) []error {
+func (v *Validator) Validate(htmlPath string) []error {
 	var errs []error
+	content, err := afero.ReadFile(v.fs, htmlPath)
+	if err != nil {
+		return []error{fmt.Errorf("could not read file (%s): %v", htmlPath, err)}
+	}
 
 	// Find all anchor href attributes
 	matches := v.linkRegex.FindAllSubmatch(content, -1)
@@ -67,7 +75,7 @@ func (v *Validator) Validate(htmlPath, buildDir string, content []byte) []error 
 				errs = append(errs, fmt.Errorf("%s: external link not accessible: %s (%w)", htmlPath, href, err))
 			}
 		} else {
-			if err := v.validateLocalLink(href, htmlPath, buildDir); err != nil {
+			if err := v.validateLocalLink(href, htmlPath, v.buildDir); err != nil {
 				errs = append(errs, fmt.Errorf("%s: local link not found: %s", htmlPath, href))
 			}
 		}
@@ -108,14 +116,14 @@ func (v *Validator) validateLocalLink(href, htmlPath, buildDir string) error {
 	linkPath := shared.ResolveLocalPath(href, htmlPath, buildDir)
 
 	// Check if path exists as-is (could be a file or directory)
-	if _, err := os.Stat(linkPath); err == nil {
+	if _, err := v.fs.Stat(linkPath); err == nil {
 		return nil
 	}
 
 	// If path doesn't have an extension, check for index.html
 	if filepath.Ext(linkPath) == "" {
 		indexPath := filepath.Join(linkPath, "index.html")
-		if _, err := os.Stat(indexPath); err == nil {
+		if _, err := v.fs.Stat(indexPath); err == nil {
 			return nil
 		}
 	}

@@ -5,12 +5,14 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/spf13/afero"
 	"github.com/tjnvr/blog/internal/generator/section"
 )
 
 // Validator checks that the generated HTML contains a <nav> element
 // with links to all expected sections
 type Validator struct {
+	fs            afero.Fs
 	sections      []section.Section
 	navRegex      *regexp.Regexp
 	homeHrefRegex *regexp.Regexp
@@ -18,8 +20,9 @@ type Validator struct {
 
 // NewValidator creates a new navigation validator that will check
 // for the presence of nav links to all given sections plus the home page
-func NewValidator(sections []section.Section) *Validator {
+func NewValidator(fs afero.Fs, sections []section.Section) *Validator {
 	return &Validator{
+		fs: fs,
 		sections:      sections,
 		navRegex:      regexp.MustCompile(`(?s)<nav[^>]*>(.*?)</nav>`),
 		homeHrefRegex: regexp.MustCompile(`href="(\.\./)*index\.html"`),
@@ -27,8 +30,13 @@ func NewValidator(sections []section.Section) *Validator {
 }
 
 // Validate checks the HTML content for a <nav> element containing links to all sections
-func (v *Validator) Validate(htmlPath, buildDir string, content []byte) []error {
+func (v *Validator) Validate(htmlPath string) []error {
 	var errs []error
+	content, err := afero.ReadFile(v.fs, htmlPath)
+	if err != nil {
+		return []error{fmt.Errorf("could not read file (%s): %v", htmlPath, err)}
+	}
+
 	html := string(content)
 
 	// Extract <nav> content

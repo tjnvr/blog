@@ -2,6 +2,9 @@ package content
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type mockPathTranslater struct {
@@ -85,12 +88,8 @@ func TestConvertAssetsPath(t *testing.T) {
 				assetsPathsTranslater: mockPathTranslater{newPath: tt.newPath},
 			}
 			got, err := s.convertAssetsPath(tt.html, tt.filePath)
-			if err != nil {
-				t.Fatalf("convertAssetsPath() unexpected error: %v", err)
-			}
-			if got != tt.want {
-				t.Errorf("convertAssetsPath() = %q, want %q", got, tt.want)
-			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -175,12 +174,8 @@ func TestConvertMdLinksPath(t *testing.T) {
 				linksPathTranslater: mockPathTranslater{newPath: tt.newPath},
 			}
 			got, err := s.convertMdLinksPath(tt.html, tt.filePath)
-			if err != nil {
-				t.Fatalf("convertMdLinksPath() unexpected error: %v", err)
-			}
-			if got != tt.want {
-				t.Errorf("convertMdLinksPath() = %q, want %q", got, tt.want)
-			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }

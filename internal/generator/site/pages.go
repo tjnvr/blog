@@ -8,11 +8,13 @@ import (
 	"strings"
 
 	"github.com/tjnvr/blog/internal/generator/page"
-	"github.com/tjnvr/blog/internal/generator/page/filesystem"
 	htmlsubstitutions "github.com/tjnvr/blog/internal/generator/page/html/substitution"
 	"github.com/tjnvr/blog/internal/generator/page/html/validation"
+	"github.com/tjnvr/blog/internal/generator/page/markdown"
 	mdsubstitutions "github.com/tjnvr/blog/internal/generator/page/markdown/substitution"
 	"github.com/tjnvr/blog/internal/generator/section"
+
+	"github.com/spf13/afero"
 )
 
 func (g *Generator) generatePages() error {
@@ -20,7 +22,7 @@ func (g *Generator) generatePages() error {
 	linksPathTranslater := NewPathResolver(g.contentDir, g.buildDir)
 
 	errs := make([]error, 0)
-	err := g.fs.Walk(g.contentDir, func(markDownFilePath string, info os.FileInfo, err error) error {
+	err := afero.Walk(g.fs, g.contentDir, func(markDownFilePath string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -37,7 +39,7 @@ func (g *Generator) generatePages() error {
 		}
 
 		// Page section is the directory between content dir and file name
-		pageSection, err := extractSection(g.contentDir, markDownFilePath)
+		pageSection, err := section.ExtractSection(g.contentDir, markDownFilePath)
 		if err != nil {
 			errs = append(errs, err)
 			return nil
@@ -72,13 +74,13 @@ func (g *Generator) generatePages() error {
 	return nil
 }
 
-func defaultPageGeneratorFactory(sourceMDPath, destinationHTMLPath, buildDir, pageSection string, assetsPathTranslater, linksPathTranslater newPathResolver, sections []section.Section, skipURLValidation bool) PageGenerator {
-	var (
-		fs                    = filesystem.NewOSFileSystem()
-		markdownSubstitutions = mdsubstitutions.NewRegistry(sourceMDPath)
-		HTMLSubstitutions     = htmlsubstitutions.NewRegistry(destinationHTMLPath, sourceMDPath, assetsPathTranslater, linksPathTranslater, sections, pageSection)
-		validations           = validation.NewRegistry(sections, skipURLValidation)
-	)
-
-	return page.NewGenerator(sourceMDPath, destinationHTMLPath, buildDir, pageSection, fs, markdownSubstitutions, HTMLSubstitutions, validations)
+func newPageGeneratorFactory(fs afero.Fs) pageGeneratorFactory {
+	return func(sourceMDPath, destinationHTMLPath, buildDir, pageSection string, assetsPathTranslater, linksPathTranslater newPathResolver, sections []section.Section, skipURLValidation bool) PageGenerator {
+		var (
+			markdownSubstitutions = mdsubstitutions.NewRegistry(sourceMDPath, fs)
+			HTMLSubstitutions     = htmlsubstitutions.NewRegistry(destinationHTMLPath, sourceMDPath, assetsPathTranslater, linksPathTranslater, sections, pageSection)
+			validations           = validation.NewRegistry(fs, sections, skipURLValidation)
+		)
+		return page.NewGenerator(buildDir, pageSection, fs, markdownSubstitutions, markdown.NewConverter(), HTMLSubstitutions, validations)
+	}
 }
