@@ -90,7 +90,7 @@ func (g *Generator) generatePages(contentDir, assetsDir, buildDir string) error 
 }
 
 func newPageGeneratorFactory(fs afero.Fs) pageGeneratorFactory {
-	return func(sourceMDPath, destinationHTMLPath, buildDir, pageSection string, assetsPathTranslater, linksPathTranslater newPathResolver, sections []section.Section, skipURLValidation bool) PageGenerator {
+	return func(sourceMDPath, destinationHTMLPath, buildDir, pageSection string, assetsPathTranslater, linksPathTranslater pathResolver, sections []section.Section, skipURLValidation bool) PageGenerator {
 		var (
 			markdownSubstitutions = mdsubstitutions.NewRegistry(sourceMDPath, fs)
 			HTMLSubstitutions     = htmlsubstitutions.NewRegistry(destinationHTMLPath, sourceMDPath, assetsPathTranslater, linksPathTranslater, sections, pageSection)

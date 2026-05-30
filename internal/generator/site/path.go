@@ -6,12 +6,22 @@ import (
 	"strings"
 )
 
-type newPathResolver struct {
-	oldPathDirectory, newPathDirectory string
-}
+type (
+	pathResolver struct {
+		oldPathDirectory, newPathDirectory string
+	}
 
-func NewPathResolver(oldPathDirectory, newPathDirectory string) newPathResolver {
-	return newPathResolver{
+	PathResolver interface {
+		GetNewPath(oldPath, fromPath string) (string, error)
+	}
+
+	pathResolverFactory interface {
+		Create(oldPathDirectory, newPathDirectory string) PathResolver
+	}
+)
+
+func NewPathResolver(oldPathDirectory, newPathDirectory string) pathResolver {
+	return pathResolver{
 		oldPathDirectory: oldPathDirectory,
 		newPathDirectory: newPathDirectory,
 	}
@@ -21,7 +31,7 @@ func NewPathResolver(oldPathDirectory, newPathDirectory string) newPathResolver 
 // The path resolver instance can only be used to resolve paths relative to the project root.
 // oldPath must be located inside oldPathDirectory, otherwise the function returns an error.
 // It is used to compute relative path of links and local assets and pages in the html pages.
-func (np newPathResolver) GetNewPath(oldPath, fromPath string) (string, error) {
+func (np pathResolver) GetNewPath(oldPath, fromPath string) (string, error) {
 	oldPathRelToOldPathDir, err := filepath.Rel(np.oldPathDirectory, oldPath)
 	if err != nil {
 		return "", err
