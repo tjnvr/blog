@@ -18,8 +18,6 @@ type (
 		Validate(HTMLFilePath string) error
 	}
 
-	pageGeneratorFactory func(sourceMDPath, toHTMLPath, buildDir, pageSection string, assetsPathTranslater, linksPathTranslater pathResolver, sections []section.Section, skipURLValidation bool) PageGenerator
-
 	sectionsLister interface {
 		ListSections(fs afero.Fs, sectionExtractor sectionExtractor, contentDir string) ([]section.Section, error)
 	}
@@ -45,14 +43,35 @@ type (
 	}
 
 	HTMLSubstituerFactory interface {
-		Create(toHTMLFilePath string, fromMarkdownFilePath string, assetsPathTranslater, linksPathTranslater content.PathTranslater, sections []section.Section, pageSection string) page.HTMLSubstituer
+		Create(
+			toHTMLFilePath string,
+			fromMarkdownFilePath string,
+			assetsPathTranslater,
+			linksPathTranslater content.PathTranslater,
+			sections []section.Section,
+			sectionExtractor sectionExtractor,
+		) page.HTMLSubstituer
 	}
 
 	HTMLValidationFactory interface {
-		Create(fs afero.Fs, destinationHTMLPath, buildDir string, sections []section.Section, skipURLValidation bool) page.PageValidator
+		Create(
+			fs afero.Fs,
+			destinationHTMLPath,
+			buildDir string,
+			sections []section.Section,
+			skipURLValidation bool,
+		) page.PageValidator
 	}
 
-	sectionExtractor func(dir, filePath string) (string, error)
+	pageGeneratorFactory interface {
+		Create(
+			fs afero.Fs,
+			markdownSubstituer page.MarkdownSubstituer,
+			markdownToHTMLConverter page.MarkdownConverter,
+			HTMLSubstituer page.HTMLSubstituer,
+			HTMLValidator page.PageValidator,
+		) PageGenerator
+	}
 
 	Option func(*Generator)
 )
@@ -73,10 +92,10 @@ type Generator struct {
 	assetsPathResolverFactory  pathResolverFactory
 	scriptsPathResolverFactory pathResolverFactory
 	HTMLValidationFactory      HTMLValidationFactory
+	pageGeneratorFactory       pageGeneratorFactory
 
 	skipURLValidation bool
 
-	pageGeneratorFactory               pageGeneratorFactory
 	sections                           []section.Section
 	generatorsBySourceMarkdownFilePath map[string]PageGenerator
 }
@@ -86,10 +105,10 @@ func WithSkipURLValidation(skip bool) Option {
 	return func(g *Generator) { g.skipURLValidation = skip }
 }
 
-func NewGenerator(fs afero.Fs, opts ...Option) (*Generator, error) {
+func NewGenerator(fs afero.Fs, pageGeneratorFactory pageGeneratorFactory, opts ...Option) (*Generator, error) {
 	g := &Generator{
 		sections:                           make([]section.Section, 0),
-		pageGeneratorFactory:               newPageGeneratorFactory(fs),
+		pageGeneratorFactory:               pageGeneratorFactory,
 		generatorsBySourceMarkdownFilePath: make(map[string]PageGenerator),
 		fs:                                 fs,
 	}
@@ -141,10 +160,10 @@ func (g *Generator) Generate(contentDir, buildDir, assetsDir, assetsOutDir, scri
 			assetsPathResolver,
 			scriptsPathResolver,
 			sections,
-			section,
+			g.sectionExtractor,
 		)
 		HTMLValidator := g.HTMLValidationFactory.Create(g.fs, g.markdownToHTMLPathTranslater.GetNewPath(markdownPageFilePath), buildDir, sections, g.skipURLValidation)
-		pagesGeneratorsByPath[markdownPageFilePath] = page.NewGenerator(g.fs, markdownSubstituer, markdownToHTMLConverter, HTMLSubstituer, HTMLValidator)
+		pagesGeneratorsByPath[markdownPageFilePath] = g.pageGeneratorFactory.Create(g.fs, markdownSubstituer, markdownToHTMLConverter, HTMLSubstituer, HTMLValidator)
 	}
 
 	errs := make([]error, 0)
