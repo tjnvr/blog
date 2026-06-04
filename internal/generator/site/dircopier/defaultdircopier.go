@@ -1,4 +1,4 @@
-package site
+package dircopier
 
 import (
 	"fmt"
@@ -8,9 +8,10 @@ import (
 	"github.com/spf13/afero"
 )
 
-// copyDir copies all files in srcDir to destDir using fs
-func copyDir(fs afero.Fs, srcDir, destDir string) error {
-	return afero.Walk(fs, srcDir, func(path string, info os.FileInfo, err error) error {
+type defaultDirCopier struct{}
+
+func (d defaultDirCopier) CopyDir(fs afero.Fs, from, to string) error {
+	return afero.Walk(fs, from, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -19,12 +20,12 @@ func copyDir(fs afero.Fs, srcDir, destDir string) error {
 			return nil
 		}
 
-		relPath, err := filepath.Rel(srcDir, path)
+		relPath, err := filepath.Rel(from, path)
 		if err != nil {
 			return err
 		}
 
-		outPath := filepath.Join(destDir, relPath)
+		outPath := filepath.Join(to, relPath)
 
 		data, err := afero.ReadFile(fs, path)
 		if err != nil {

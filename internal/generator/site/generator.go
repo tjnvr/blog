@@ -4,9 +4,11 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/tjnvr/blog/internal/generator/backbone/htmlpath"
+	"github.com/tjnvr/blog/internal/generator/backbone/pages"
+	"github.com/tjnvr/blog/internal/generator/backbone/relpath"
+	"github.com/tjnvr/blog/internal/generator/backbone/section"
 	"github.com/tjnvr/blog/internal/generator/page"
-	"github.com/tjnvr/blog/internal/generator/page/html/substitution/content"
-	"github.com/tjnvr/blog/internal/generator/section"
 
 	"github.com/spf13/afero"
 )
@@ -16,10 +18,6 @@ type (
 		Generate(fromMarkdownFilePath, toHTMLFilePath string) error
 
 		Validate(HTMLFilePath string) error
-	}
-
-	sectionsLister interface {
-		ListSections(fs afero.Fs, sectionExtractor sectionExtractor, contentDir string) ([]section.Section, error)
 	}
 
 	dirCopier interface {
@@ -47,9 +45,8 @@ type (
 			toHTMLFilePath string,
 			fromMarkdownFilePath string,
 			assetsPathTranslater,
-			linksPathTranslater content.PathTranslater,
-			sections []section.Section,
-			sectionExtractor sectionExtractor,
+			linksPathTranslater relpath.Resolver,
+			sectionExtractor section.Resolver,
 		) page.HTMLSubstituer
 	}
 
@@ -72,45 +69,62 @@ type (
 			HTMLValidator page.PageValidator,
 		) PageGenerator
 	}
-
-	Option func(*Generator)
 )
 
 type Generator struct {
-	// All files and directories attributes are relative to the project root.
-	fs             afero.Fs
-	sectionsLister sectionsLister
-	dirCopier      dirCopier
-	pagesLister    pagesLister
+	// Site generator dependencies
+	fs        afero.Fs
+	dirCopier dirCopier
 
-	markdownToHTMLPathTranslater pathTranslater
-	sectionExtractor             sectionExtractor
+	// Site generator dependencies
+	pagesResolver    pages.Resolver
+	HTMLPathResolver htmlpath.Resolver
+	sectionResolver  section.Resolver
 
+	// Page generator dependencies
 	markdownSubstituerFactory  markdownSubstituerFactory
 	markdownConverterFactory   markdownConverterFactory
 	HTMLSubstituerFactory      HTMLSubstituerFactory
-	assetsPathResolverFactory  pathResolverFactory
-	scriptsPathResolverFactory pathResolverFactory
+	assetsPathResolverFactory  relpath.ResolverFactory
+	scriptsPathResolverFactory relpath.ResolverFactory
 	HTMLValidationFactory      HTMLValidationFactory
 	pageGeneratorFactory       pageGeneratorFactory
 
+	// Site generator options
 	skipURLValidation bool
 
-	sections                           []section.Section
 	generatorsBySourceMarkdownFilePath map[string]PageGenerator
 }
 
-// WithSkipURLValidation returns an Option that disables external URL validation.
-func WithSkipURLValidation(skip bool) Option {
-	return func(g *Generator) { g.skipURLValidation = skip }
-}
-
-func NewGenerator(fs afero.Fs, pageGeneratorFactory pageGeneratorFactory, opts ...Option) (*Generator, error) {
+func NewGenerator(
+	fs afero.Fs,
+	dirCopier dirCopier,
+	pagesResolver pages.Resolver,
+	HTMLPathResolver htmlpath.Resolver,
+	sectionResolver section.Resolver,
+	markdownSubstituerFactory markdownSubstituerFactory,
+	markdownConverterFactory markdownConverterFactory,
+	HTMLSubstituerFactory HTMLSubstituerFactory,
+	assetsPathResolverFactory relpath.ResolverFactory,
+	scriptsPathResolverFactory relpath.ResolverFactory,
+	HTMLValidationFactory HTMLValidationFactory,
+	pageGeneratorFactory pageGeneratorFactory,
+	opts ...Option,
+) (*Generator, error) {
 	g := &Generator{
-		sections:                           make([]section.Section, 0),
+		fs:                                 fs,
+		dirCopier:                          dirCopier,
+		pagesResolver:                      pagesResolver,
+		HTMLPathResolver:                   HTMLPathResolver,
+		sectionResolver:                    sectionResolver,
+		markdownSubstituerFactory:          markdownSubstituerFactory,
+		markdownConverterFactory:           markdownConverterFactory,
+		HTMLSubstituerFactory:              HTMLSubstituerFactory,
+		assetsPathResolverFactory:          assetsPathResolverFactory,
+		scriptsPathResolverFactory:         scriptsPathResolverFactory,
+		HTMLValidationFactory:              HTMLValidationFactory,
 		pageGeneratorFactory:               pageGeneratorFactory,
 		generatorsBySourceMarkdownFilePath: make(map[string]PageGenerator),
-		fs:                                 fs,
 	}
 
 	for _, opt := range opts {
@@ -120,58 +134,48 @@ func NewGenerator(fs afero.Fs, pageGeneratorFactory pageGeneratorFactory, opts .
 	return g, nil
 }
 
-// Generate process markdown files to gerne
-//
-// sourceMarkdownFilePath is the markdown file content to process
-// destinationHTMLFilePath is the HTML file that will be produced
+// Generate process markdown files to generate HTML pages
 func (g *Generator) Generate(contentDir, buildDir, assetsDir, assetsOutDir, scriptsDir, scriptsOutDir string) error {
-	sections, err := g.sectionsLister.ListSections(g.fs, g.sectionExtractor, contentDir)
-	if err != nil {
-		return fmt.Errorf("ListSections err: %v", err)
-	}
-
 	if err := g.dirCopier.CopyDir(g.fs, assetsDir, assetsOutDir); err != nil {
-		return fmt.Errorf("dirCopier err: %v", err)
+		return fmt.Errorf("dir copy err: %v", err)
 	}
 
 	if err := g.dirCopier.CopyDir(g.fs, scriptsDir, scriptsOutDir); err != nil {
-		return fmt.Errorf("dirCopier err: %v", err)
+		return fmt.Errorf("dir copy err: %v", err)
 	}
 
-	pagesFilePaths, err := g.pagesLister.ListPages(g.fs, contentDir)
+	pagesFilePaths, err := g.pagesResolver.ResolveAll()
 	if err != nil {
-		return fmt.Errorf("ListPages err: %v", err)
+		return fmt.Errorf("pages listing err: %v", err)
 	}
 
-	pagesGeneratorsByPath := make(map[string]*page.Generator)
+	pagesGeneratorsByPath := make(map[string]PageGenerator)
 	for _, markdownPageFilePath := range pagesFilePaths {
-		markdownSubstituer := g.markdownSubstituerFactory.Create(g.fs, g.markdownToHTMLPathTranslater.GetNewPath(markdownPageFilePath))
+		HTMLPageFilePath, err := g.HTMLPathResolver.Resolve(markdownPageFilePath)
+		if err != nil {
+			return fmt.Errorf("cannot resolve HTML path for page (%s): %v", markdownPageFilePath, err)
+		}
+		markdownSubstituer := g.markdownSubstituerFactory.Create(g.fs, HTMLPageFilePath)
 		markdownToHTMLConverter := g.markdownConverterFactory.Create()
 		assetsPathResolver := g.assetsPathResolverFactory.Create(assetsDir, assetsOutDir)
 		scriptsPathResolver := g.scriptsPathResolverFactory.Create(scriptsDir, scriptsOutDir)
-		section, err := g.sectionExtractor(contentDir, markdownPageFilePath)
-		if err != nil {
-			return fmt.Errorf("sectionExtractor err: %v", err)
-		}
-
 		HTMLSubstituer := g.HTMLSubstituerFactory.Create(
-			g.markdownToHTMLPathTranslater.GetNewPath(markdownPageFilePath),
+			HTMLPageFilePath,
 			markdownPageFilePath,
 			assetsPathResolver,
 			scriptsPathResolver,
-			sections,
-			g.sectionExtractor,
+			g.sectionResolver,
 		)
-		HTMLValidator := g.HTMLValidationFactory.Create(g.fs, g.markdownToHTMLPathTranslater.GetNewPath(markdownPageFilePath), buildDir, sections, g.skipURLValidation)
+		HTMLValidator := g.HTMLValidationFactory.Create(g.fs, HTMLPageFilePath, buildDir, sections, g.skipURLValidation)
 		pagesGeneratorsByPath[markdownPageFilePath] = g.pageGeneratorFactory.Create(g.fs, markdownSubstituer, markdownToHTMLConverter, HTMLSubstituer, HTMLValidator)
 	}
 
 	errs := make([]error, 0)
 	for markdownPageFilePath, pg := range pagesGeneratorsByPath {
-		if err := pg.Generate(markdownPageFilePath, g.markdownToHTMLPathTranslater.GetNewPath(markdownPageFilePath)); err != nil {
+		HTMLPageFilePath, _ := g.HTMLPathResolver.Resolve(markdownPageFilePath)
+		if err := pg.Generate(markdownPageFilePath, HTMLPageFilePath); err != nil {
 			errs = append(errs, err)
 		}
-
 	}
 
 	if len(errs) != 0 {
@@ -184,7 +188,12 @@ func (g *Generator) Generate(contentDir, buildDir, assetsDir, assetsOutDir, scri
 func (g *Generator) Validate() error {
 	errs := make([]error, 0)
 	for markdownPageFilePath, pg := range g.generatorsBySourceMarkdownFilePath {
-		if err := pg.Validate(g.markdownToHTMLPathTranslater.GetNewPath(markdownPageFilePath)); err != nil {
+		HTMLPageFilePath, err := g.HTMLPathResolver.Resolve(markdownPageFilePath)
+		if err != nil {
+			return fmt.Errorf("cannot resolve HTML file path for page (%s): %v", markdownPageFilePath, err)
+		}
+
+		if err := pg.Validate(HTMLPageFilePath); err != nil {
 			errs = append(errs, err)
 		}
 	}

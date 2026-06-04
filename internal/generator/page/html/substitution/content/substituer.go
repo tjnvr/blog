@@ -5,24 +5,22 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"github.com/tjnvr/blog/internal/generator/backbone/relpath"
 )
 
 type (
-	PathTranslater interface {
-		GetNewPath(oldPath, fromPath string) (string, error)
-	}
-
 	// Substituter resolves the {{content}} template placeholder
 	// it replaces links and assets with their real path in the build directory
 	Substituter struct {
 		filePath              string
 		markdownSourcePath    string
-		assetsPathsTranslater PathTranslater
-		linksPathTranslater   PathTranslater
+		assetsPathsTranslater path.Resolver
+		linksPathTranslater   path.Resolver
 	}
 )
 
-func NewSubstituer(filePath, markdownSourcePath string, assetsPathsTranslater PathTranslater, linksPathTranslater PathTranslater) Substituter {
+func NewSubstituer(filePath, markdownSourcePath string, assetsPathsTranslater, linksPathTranslater path.Resolver) Substituter {
 	return Substituter{
 		filePath:              filePath,
 		markdownSourcePath:    markdownSourcePath,
@@ -69,7 +67,7 @@ func (s Substituter) convertMdLinksPath(html string, filePath string) (string, e
 		// From root directory
 		fullOldPath := strings.TrimSuffix(filepath.Join(filepath.Dir(s.markdownSourcePath), src), ".md") + ".html"
 
-		newPath, err := s.linksPathTranslater.GetNewPath(fullOldPath, filePath)
+		newPath, err := s.linksPathTranslater.Resolve(fullOldPath, filePath)
 		if err != nil {
 			if firstErr == nil {
 				firstErr = err
@@ -103,7 +101,7 @@ func (s Substituter) convertAssetsPath(html string, filePath string) (string, er
 		// From root directory
 		fullOldPath := filepath.Join(filepath.Dir(s.markdownSourcePath), src)
 
-		newPath, err := s.assetsPathsTranslater.GetNewPath(fullOldPath, filePath)
+		newPath, err := s.assetsPathsTranslater.Resolve(fullOldPath, filePath)
 		if err != nil {
 			if firstErr == nil {
 				firstErr = err

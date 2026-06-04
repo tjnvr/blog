@@ -3,27 +3,54 @@ package section
 import (
 	"fmt"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/spf13/afero"
+	"github.com/tjnvr/blog/internal/generator/backbone/pages"
 )
 
 // Section represents a top-level site section.
-type Section struct {
-	DirName     string // directory name (used for URL path construction)
-	DisplayName string // display name shown in navigation (from # title in index.md)
+type (
+	Section struct {
+		DirName     string // directory name (used for URL path construction)
+		DisplayName string // display name shown in navigation (from # title in index.md)
+	}
+
+	defaultPageSectionResolver struct {
+		fs            afero.Fs
+		pagesResolver pages.Resolver
+		contentDir    string
+		sections      []Section
+	}
+)
+
+func NewDefaultPageSectionResolver(fs afero.Fs, contentDir string, pagesResolver pages.Resolver) *defaultPageSectionResolver {
+	return &defaultPageSectionResolver{fs: fs, contentDir: contentDir, sections: make([]Section, 0)}
 }
 
-type defaultPageSectionResolver struct {
-	fs         afero.Fs
-	contentDir string
+func (p *defaultPageSectionResolver) ResolveAll() ([]Section, error) {
+	pages, err := p.pagesResolver.ResolveAll()
+	if err != nil {
+		return nil, fmt.Errorf("cannot resolve pages: %v", err)
+	}
+	for _, page := range pages {
+		pageSection, err := p.Resolve(page)
+		if err != nil {
+			return nil, fmt.Errorf("cannot resolve page section for page (%s) : %v", page, err)
+		}
+
+		if !slices.ContainsFunc(p.sections, func(e Section) bool {
+			return e == pageSection
+		}) {
+			p.sections = append(p.sections, pageSection)
+		}
+	}
+
+	return p.sections, nil
 }
 
-func NewDefaultPageSectionResolver(fs afero.Fs, contentDir string) defaultPageSectionResolver {
-	return defaultPageSectionResolver{fs: fs, contentDir: contentDir}
-}
-
-func (p defaultPageSectionResolver) Resolve(pageFilePath string) (Section, error) {
+func (p *defaultPageSectionResolver) Resolve(pageFilePath string) (Section, error) {
 	sectionDirName, err := extractSectionDirName(p.contentDir, pageFilePath)
 	if err != nil {
 		return Section{}, fmt.Errorf("extractSectionDirName err: %v", err)
