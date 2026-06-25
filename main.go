@@ -1,28 +1,40 @@
 package main
 
-import (
-	"flag"
-	"log"
+import "fmt"
 
-	"github.com/tjnvr/blog/internal/generator/site"
-)
+// FilterStrings takes a slice of strings and a predicate function.
+// It returns a new slice containing only the strings for which the predicate returns true.
+func FilterStrings(slice []string, predicate func(string) bool) []string {
+	var result []string
+	for _, str := range slice {
+		if predicate(str) {
+			result = append(result, str)
+		}
+	}
+	return result
+}
 
 func main() {
-	skipURLValidation := flag.Bool("skip-url-validation", false, "Skip external URL validation")
-	flag.Parse()
+	// Example usage:
+	words := []string{"apple", "banana", "cherry", "date", "elderberry"}
 
-	gen, err := site.NewGenerator(site.WithSkipURLValidation(*skipURLValidation))
-	if err != nil {
-		log.Fatalf("Could not create the site generator: %v\n", err)
-	}
+	// Filter words that start with 'a'
+	filteredWords := FilterStrings(words, func(s string) bool {
+		return len(s) > 5
+	})
 
-	if err := gen.Generate(); err != nil {
-		log.Fatalf("Site generation error: %v\n", err)
-	}
+	fmt.Println("Original words:", words)
+	fmt.Println("Words longer than 5 characters:", filteredWords)
 
-	if err := gen.Validate(); err != nil {
-		log.Fatalf("Site validation error: %v\n", err)
-	}
+	// Another example: filter words containing 'e'
+	wordsWithE := FilterStrings(words, func(s string) bool {
+		for _, r := range s {
+			if r == 'e' {
+				return true
+			}
+		}
+		return false
+	})
 
-	log.Println("Site generated successfully !")
+	fmt.Println("Words containing 'e':", wordsWithE)
 }

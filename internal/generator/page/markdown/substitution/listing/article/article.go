@@ -2,13 +2,13 @@ package article
 
 import (
 	"fmt"
-	"io/fs"
-	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 
+	"github.com/spf13/afero"
 	"github.com/tjnvr/blog/internal/generator/page/markdown/metadata"
+	"github.com/tjnvr/blog/internal/io/fs"
 )
 
 type Article struct {
@@ -25,46 +25,47 @@ func (a Article) Print() string {
 }
 
 type ListPageArticles struct {
-	indexFilePath string
+	fs              afero.Fs
+	filePathsLister fs.FilesFinder
+	indexFilePath   string
 }
 
-func NewPageArticlesLister(indexFilePath string) ListPageArticles {
+func NewPageArticlesLister(fs afero.Fs, indexFilePath string, filePathsLister fs.FilesFinder) ListPageArticles {
 	return ListPageArticles{
-		indexFilePath: indexFilePath,
+		fs:              fs,
+		indexFilePath:   indexFilePath,
+		filePathsLister: filePathsLister,
 	}
 }
 
 func (la ListPageArticles) ListPrinters() ([]Article, error) {
 	articles := make([]Article, 0)
 	dir := filepath.Dir(la.indexFilePath)
-	if err := filepath.Walk(dir, func(path string, info fs.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		// skip subdirectories
-		if info.IsDir() && path != dir {
-			return filepath.SkipDir
-		}
+	filePaths, err := la.filePathsLister.FindFiles(dir)
+	if err != nil {
+		return articles, fmt.Errorf("error on ListFilePaths: %s", err)
+	}
+
+	for _, path := range filePaths {
 		// only first-level .md files, excluding the index file itself
-		if filepath.Dir(path) != dir || filepath.Ext(path) != ".md" || path == la.indexFilePath {
-			return nil
+		if filepath.Dir(path) != dir || path == la.indexFilePath {
+			continue
 		}
-		data, err := os.ReadFile(path)
+
+		data, err := afero.ReadFile(la.fs, path)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		name := extractTitle(data)
 		if name == "" {
-			return nil
+			continue
 		}
+
 		articles = append(articles, Article{
 			name:      name,
 			filePath:  filepath.Base(path),
 			createdAt: metadata.Extract(data).CreationDate,
 		})
-		return nil
-	}); err != nil {
-		return []Article{}, err
 	}
 
 	sort.Slice(articles, func(i, j int) bool {

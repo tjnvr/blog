@@ -3,6 +3,8 @@ package substitution
 import (
 	"strings"
 
+	"github.com/spf13/afero"
+	"github.com/tjnvr/blog/internal/io/fs"
 	"github.com/tjnvr/blog/internal/generator/page/markdown/substitution/listing"
 	"github.com/tjnvr/blog/internal/generator/page/markdown/substitution/listing/article"
 )
@@ -15,7 +17,11 @@ type Registry struct {
 // NewRegistry creates a new substitution registry with default substituters
 func NewRegistry(filePath string) *Registry {
 	return NewRegistryWithSubstituters(
-		listing.NewSubstituer("{{list-child-articles}}", article.NewPageArticlesLister(filePath), "\n"),
+		listing.NewSubstituer(
+			"{{list-child-articles}}",
+			article.NewPageArticlesLister(afero.NewOsFs(), filePath, fs.NewFilesFinder(afero.NewOsFs(), fs.WithExtension(".md"))),
+			"\n",
+		),
 	)
 }
 

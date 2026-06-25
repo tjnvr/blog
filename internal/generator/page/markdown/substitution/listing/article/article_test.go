@@ -1,9 +1,11 @@
 package article
 
 import (
-	"os"
-	"path/filepath"
 	"testing"
+
+	"github.com/spf13/afero"
+	"github.com/stretchr/testify/assert"
+	"github.com/tjnvr/blog/internal/io/fs"
 )
 
 func TestArticlePrint(t *testing.T) {
@@ -103,18 +105,11 @@ func TestListPrinters(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			dir := t.TempDir()
+			memFs := afero.NewMemMapFs()
 			for relPath, content := range tt.files {
-				fullPath := filepath.Join(dir, relPath)
-				if err := os.MkdirAll(filepath.Dir(fullPath), 0755); err != nil {
-					t.Fatalf("MkdirAll: %v", err)
-				}
-				if err := os.WriteFile(fullPath, []byte(content), 0644); err != nil {
-					t.Fatalf("WriteFile: %v", err)
-				}
+				assert.Nil(t, afero.WriteFile(memFs, relPath, []byte(content), 0644))
 			}
-
-			lister := NewPageArticlesLister(filepath.Join(dir, tt.indexFile))
+			lister := NewPageArticlesLister(memFs, tt.indexFile, fs.NewFilesFinder(memFs, fs.WithExtension(".md"), fs.WithLevel(1)))
 			articles, err := lister.ListPrinters()
 			if tt.wantErr {
 				if err == nil {
