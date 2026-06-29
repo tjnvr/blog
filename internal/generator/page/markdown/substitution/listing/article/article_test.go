@@ -1,12 +1,13 @@
 package article
 
 import (
-	"os"
-	"path/filepath"
 	"testing"
+
+	"github.com/spf13/afero"
+	"github.com/stretchr/testify/assert"
 )
 
-func TestArticlePrint(t *testing.T) {
+func TestArticle_Print(t *testing.T) {
 	tests := []struct {
 		name string
 		a    Article
@@ -25,9 +26,11 @@ func TestArticlePrint(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.a.Print(); got != tt.want {
-				t.Errorf("Print() = %q, want %q", got, tt.want)
-			}
+			// test
+			got := tt.a.Print()
+
+			// expect
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -47,15 +50,16 @@ func TestExtractTitle(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// test
 			got := extractTitle([]byte(tt.input))
-			if got != tt.want {
-				t.Errorf("extractTitle() = %q, want %q", got, tt.want)
-			}
+
+			// expect
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
 
-func TestListPrinters(t *testing.T) {
+func TestPageArticlesLister_ListPrinters(t *testing.T) {
 	tests := []struct {
 		name      string
 		files     map[string]string // relative path -> content
@@ -103,40 +107,31 @@ func TestListPrinters(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			dir := t.TempDir()
+			// given
+			memFs := afero.NewMemMapFs()
+
+			// setup
 			for relPath, content := range tt.files {
-				fullPath := filepath.Join(dir, relPath)
-				if err := os.MkdirAll(filepath.Dir(fullPath), 0755); err != nil {
-					t.Fatalf("MkdirAll: %v", err)
-				}
-				if err := os.WriteFile(fullPath, []byte(content), 0644); err != nil {
-					t.Fatalf("WriteFile: %v", err)
-				}
+				assert.Nil(t, afero.WriteFile(memFs, relPath, []byte(content), 0644))
 			}
+			lister := NewPageArticlesLister(memFs, tt.indexFile)
 
-			lister := NewPageArticlesLister(filepath.Join(dir, tt.indexFile))
+			// test
 			articles, err := lister.ListPrinters()
+
+			// expect
 			if tt.wantErr {
-				if err == nil {
-					t.Error("expected error, got nil")
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, len(tt.wantNames), len(articles))
+
+				gotNames := make(map[string]bool)
+				for _, a := range articles {
+					gotNames[a.name] = true
 				}
-				return
-			}
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-
-			if len(articles) != len(tt.wantNames) {
-				t.Fatalf("got %d articles, want %d", len(articles), len(tt.wantNames))
-			}
-
-			gotNames := make(map[string]bool)
-			for _, a := range articles {
-				gotNames[a.name] = true
-			}
-			for _, name := range tt.wantNames {
-				if !gotNames[name] {
-					t.Errorf("missing article with name %q", name)
+				for _, name := range tt.wantNames {
+					assert.True(t, gotNames[name], "missing article with name %q", name)
 				}
 			}
 		})

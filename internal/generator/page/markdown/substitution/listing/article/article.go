@@ -2,13 +2,13 @@ package article
 
 import (
 	"fmt"
-	"io/fs"
-	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 
+	"github.com/spf13/afero"
 	"github.com/tjnvr/blog/internal/generator/page/markdown/metadata"
+	mfs "github.com/tjnvr/blog/internal/io/fs"
 )
 
 type Article struct {
@@ -25,46 +25,51 @@ func (a Article) Print() string {
 }
 
 type ListPageArticles struct {
-	indexFilePath string
+	fs                     afero.Fs
+	articleFilePathsFinder mfs.FilesFinder
+	articlesHomeFilePath   string
 }
 
-func NewPageArticlesLister(indexFilePath string) ListPageArticles {
+func NewPageArticlesLister(fs afero.Fs, articlesHomeFilePath string) ListPageArticles {
 	return ListPageArticles{
-		indexFilePath: indexFilePath,
+		fs:                   fs,
+		articlesHomeFilePath: articlesHomeFilePath,
+		articleFilePathsFinder: mfs.NewFilesFinder(fs,
+			mfs.WithLevel(1),
+			mfs.WithExtension(".md"),
+		),
 	}
 }
 
 func (la ListPageArticles) ListPrinters() ([]Article, error) {
 	articles := make([]Article, 0)
-	dir := filepath.Dir(la.indexFilePath)
-	if err := filepath.Walk(dir, func(path string, info fs.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		// skip subdirectories
-		if info.IsDir() && path != dir {
-			return filepath.SkipDir
-		}
+	dir := filepath.Dir(la.articlesHomeFilePath)
+	filePaths, err := la.articleFilePathsFinder.FindFiles(dir)
+	if err != nil {
+		return articles, fmt.Errorf("error on ListFilePaths: %s", err)
+	}
+
+	for _, relPath := range filePaths {
 		// only first-level .md files, excluding the index file itself
-		if filepath.Dir(path) != dir || filepath.Ext(path) != ".md" || path == la.indexFilePath {
-			return nil
+		if relPath == filepath.Base(la.articlesHomeFilePath) {
+			continue
 		}
-		data, err := os.ReadFile(path)
+
+		fullPath := filepath.Join(dir, relPath)
+		data, err := afero.ReadFile(la.fs, fullPath)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		name := extractTitle(data)
 		if name == "" {
-			return nil
+			continue
 		}
+
 		articles = append(articles, Article{
 			name:      name,
-			filePath:  filepath.Base(path),
+			filePath:  relPath,
 			createdAt: metadata.Extract(data).CreationDate,
 		})
-		return nil
-	}); err != nil {
-		return []Article{}, err
 	}
 
 	sort.Slice(articles, func(i, j int) bool {
