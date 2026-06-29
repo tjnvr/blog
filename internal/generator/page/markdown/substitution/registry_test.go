@@ -3,6 +3,8 @@ package substitution
 import (
 	"fmt"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 type fakeSubstituter struct {
@@ -14,34 +16,38 @@ type fakeSubstituter struct {
 func (f fakeSubstituter) Placeholder() string      { return f.placeholder }
 func (f fakeSubstituter) Resolve() (string, error) { return f.resolution, f.err }
 
-func TestNewRegistry(t *testing.T) {
-	r := NewRegistry("/content/posts/index.md")
-	if r == nil {
-		t.Fatal("NewRegistry() returned nil")
-	}
-	if len(r.substitutions) != 1 {
-		t.Errorf("NewRegistry() should have 1 default substituter, got %d", len(r.substitutions))
-	}
+func TestRegistry_NewRegistry(t *testing.T) {
+	// given
+	indexFile := "/content/posts/index.md"
+
+	// test
+	r := NewRegistry(indexFile)
+
+	// expect
+	assert.NotNil(t, r)
+	assert.Equal(t, 1, len(r.substitutions))
 }
 
-func TestNewRegistryWithSubstituters(t *testing.T) {
+func TestRegistry_NewRegistryWithSubstituters(t *testing.T) {
 	t.Run("empty registry", func(t *testing.T) {
+		// test
 		r := NewRegistryWithSubstituters()
-		if r == nil {
-			t.Fatal("NewRegistryWithSubstituters() returned nil")
-		}
-		if len(r.substitutions) != 0 {
-			t.Errorf("expected 0 substituters, got %d", len(r.substitutions))
-		}
+
+		// expect
+		assert.NotNil(t, r)
+		assert.Equal(t, 0, len(r.substitutions))
 	})
 
 	t.Run("custom substituters", func(t *testing.T) {
+		// given
 		s1 := fakeSubstituter{placeholder: "{{a}}", resolution: "A"}
 		s2 := fakeSubstituter{placeholder: "{{b}}", resolution: "B"}
+
+		// test
 		r := NewRegistryWithSubstituters(s1, s2)
-		if len(r.substitutions) != 2 {
-			t.Errorf("expected 2 substituters, got %d", len(r.substitutions))
-		}
+
+		// expect
+		assert.Equal(t, 2, len(r.substitutions))
 	})
 }
 
@@ -90,19 +96,18 @@ func TestRegistry_Apply(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// given
 			r := NewRegistryWithSubstituters(tt.subs...)
+
+			// test
 			got, err := r.Apply(tt.content)
+
+			// expect
 			if tt.wantErr {
-				if err == nil {
-					t.Error("Apply() expected error, got nil")
-				}
-				return
-			}
-			if err != nil {
-				t.Fatalf("Apply() unexpected error: %v", err)
-			}
-			if got != tt.want {
-				t.Errorf("Apply() = %q, want %q", got, tt.want)
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.want, got)
 			}
 		})
 	}

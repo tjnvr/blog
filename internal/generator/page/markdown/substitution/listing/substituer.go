@@ -1,8 +1,6 @@
 package listing
 
-import (
-	"strings"
-)
+import "strings"
 
 type (
 	Substituer[T Printer] struct {
