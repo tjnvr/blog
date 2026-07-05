@@ -1,0 +1,23 @@
+// Project-local debug tasks
+//
+// For more documentation on how to configure debug tasks,
+// see: https://zed.dev/docs/debugger
+[
+  {
+    "label": "Debug whole project",
+    "adapter": "Delve",
+    "request": "launch",
+    "mode": "debug",
+    "program": ".",
+    "cwd": "${ZED_WORKTREE_ROOT}",
+    "args": [],
+    "env": {
+      "CONTENT_DIR": "content/markdown",
+      "BUILD_DIR": "target/build",
+      "ASSETS_DIR": "content/assets",
+      "ASSETS_OUT_DIR": "target/build/assets",
+      "SCRIPTS_DIR": "scripts",
+      "SCRIPTS_OUT_DIR": "target/build/scripts"
+    }
+  }
+]
