@@ -1,10 +1,13 @@
-package site
+package relpath
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func TestGetNewPath(t *testing.T) {
+func TestResolve(t *testing.T) {
 	tests := []struct {
 		name             string
 		oldPath          string
@@ -74,13 +77,18 @@ func TestGetNewPath(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			resolver := NewPathResolver(tt.oldPathDirectory, tt.newPathDirectory)
-			got, err := resolver.GetNewPath(tt.oldPath, tt.fromPath)
-			if (err != nil) != tt.wantErr {
-				t.Fatalf("GetNewPath() error = %v, wantErr %v", err, tt.wantErr)
-			}
-			if got != tt.want {
-				t.Errorf("GetNewPath() = %q, want %q", got, tt.want)
+			// given
+			resolver := NewResolver(tt.oldPathDirectory, tt.newPathDirectory)
+
+			// test
+			got, err := resolver.Resolve(tt.oldPath, tt.fromPath)
+
+			// expect
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.want, got)
 			}
 		})
 	}

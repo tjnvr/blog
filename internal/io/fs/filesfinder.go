@@ -1,7 +1,8 @@
-// Package fs provides utilities for searching files within a filesystem using
-// the afero.Fs abstraction. See github.com/spf13/afero for details.
+// Package fs provides utilities for searching files and copying directories
+// within a filesystem using the afero.Fs abstraction. See github.com/spf13/afero for details.
 //
-// It allows filtering by directory depth, file extension, and name patterns.
+// It includes a FilesFinder for filtering files by directory depth, extension, and name patterns,
+// as well as a DirCopier for copying directory contents.
 package fs
 
 import (
@@ -34,12 +35,13 @@ type (
 		FindFiles(dir string) ([]string, error)
 	}
 
-	filesFinderOptionsFunc func(*filesFinderOptions)
+	// FilesFinderOption defines a configuration function for FilesFinder.
+	FilesFinderOption func(*filesFinderOptions)
 )
 
 // NewFilesFinder creates a new FilesFinder instance using the provided
 // afero.Fs and optional configuration functions.
-func NewFilesFinder(fs afero.Fs, opts ...filesFinderOptionsFunc) FilesFinder {
+func NewFilesFinder(fs afero.Fs, opts ...FilesFinderOption) FilesFinder {
 	f := &filesFinder{
 		fs:   fs,
 		opts: &filesFinderOptions{},
@@ -118,21 +120,21 @@ func (f *filesFinder) FindFiles(dir string) ([]string, error) {
 }
 
 // WithLevel sets the maximum depth level for searching files.
-func WithLevel(level int) filesFinderOptionsFunc {
+func WithLevel(level int) FilesFinderOption {
 	return func(opts *filesFinderOptions) {
 		opts.level = &level
 	}
 }
 
 // WithExtension sets the file extension filter for searching files.
-func WithExtension(ext string) filesFinderOptionsFunc {
+func WithExtension(ext string) FilesFinderOption {
 	return func(opts *filesFinderOptions) {
 		opts.extension = &ext
 	}
 }
 
 // WithPattern sets the name pattern filter for searching files.
-func WithPattern(pattern string) filesFinderOptionsFunc {
+func WithPattern(pattern string) FilesFinderOption {
 	return func(opts *filesFinderOptions) {
 		opts.pattern = &pattern
 	}

@@ -1,11 +1,10 @@
-package fs_test
+package fs
 
 import (
 	"fmt"
 	"sort"
 
 	"github.com/spf13/afero"
-	"github.com/tjnvr/blog/internal/io/fs"
 )
 
 func ExampleNewFilesFinder() {
@@ -13,7 +12,7 @@ func ExampleNewFilesFinder() {
 	_ = afero.WriteFile(appFs, "file1.txt", []byte(""), 0644)
 	_ = afero.WriteFile(appFs, "file2.txt", []byte(""), 0644)
 
-	finder := fs.NewFilesFinder(appFs)
+	finder := NewFilesFinder(appFs)
 	files, _ := finder.FindFiles(".")
 	sort.Strings(files)
 
@@ -31,7 +30,7 @@ func ExampleWithLevel() {
 	_ = appFs.Mkdir("sub", 0755)
 	_ = afero.WriteFile(appFs, "sub/sub.txt", []byte(""), 0644)
 
-	finder := fs.NewFilesFinder(appFs, fs.WithLevel(1))
+	finder := NewFilesFinder(appFs, WithLevel(1))
 	files, _ := finder.FindFiles(".")
 	sort.Strings(files)
 
@@ -47,7 +46,7 @@ func ExampleWithExtension() {
 	_ = afero.WriteFile(appFs, "a.txt", []byte(""), 0644)
 	_ = afero.WriteFile(appFs, "b.go", []byte(""), 0644)
 
-	finder := fs.NewFilesFinder(appFs, fs.WithExtension(".go"))
+	finder := NewFilesFinder(appFs, WithExtension(".go"))
 	files, _ := finder.FindFiles(".")
 	sort.Strings(files)
 
@@ -63,7 +62,7 @@ func ExampleWithPattern() {
 	_ = afero.WriteFile(appFs, "bar.txt", []byte(""), 0644)
 	_ = afero.WriteFile(appFs, "foobar.go", []byte(""), 0644)
 
-	finder := fs.NewFilesFinder(appFs, fs.WithPattern("foo"))
+	finder := NewFilesFinder(appFs, WithPattern("foo"))
 	files, _ := finder.FindFiles(".")
 	sort.Strings(files)
 
@@ -80,7 +79,7 @@ func ExampleFilesFinder_FindFiles() {
 	_ = afero.WriteFile(appFs, "data/a.txt", []byte(""), 0644)
 	_ = afero.WriteFile(appFs, "data/b.txt", []byte(""), 0644)
 
-	finder := fs.NewFilesFinder(appFs)
+	finder := NewFilesFinder(appFs)
 	// Find files relative to the "data" directory
 	files, _ := finder.FindFiles("data")
 	sort.Strings(files)

@@ -6,11 +6,13 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/spf13/afero"
 	"github.com/tjnvr/blog/internal/generator/section"
 )
 
 func (g *Generator) listSections() error {
-	return g.fs.Walk(g.contentDir, func(path string, info os.FileInfo, err error) error {
+	// Modified: Using afero.Walk instead of g.fs.Walk
+	return afero.Walk(g.fs, g.ContentDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -19,7 +21,7 @@ func (g *Generator) listSections() error {
 			return nil
 		}
 
-		relPath, err := filepath.Rel(g.contentDir, path)
+		relPath, err := filepath.Rel(g.ContentDir, path)
 		if err != nil {
 			return err
 		}
@@ -52,7 +54,8 @@ func (g *Generator) listSections() error {
 // extractSectionTitle reads the # title from the index.md of a section directory.
 // Falls back to the capitalized dirName if no index.md or no title is found.
 func (g *Generator) extractSectionTitle(indexMDPath, dirName string) string {
-	content, err := g.fs.ReadFile(indexMDPath)
+	// Modified: Using afero.ReadFile instead of g.fs.ReadFile
+	content, err := afero.ReadFile(g.fs, indexMDPath)
 	if err != nil {
 		return strings.ToUpper(dirName[:1]) + dirName[1:]
 	}

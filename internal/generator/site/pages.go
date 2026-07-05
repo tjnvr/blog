@@ -7,20 +7,20 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/spf13/afero"
 	"github.com/tjnvr/blog/internal/generator/page"
-	"github.com/tjnvr/blog/internal/generator/page/filesystem"
 	htmlsubstitutions "github.com/tjnvr/blog/internal/generator/page/html/substitution"
 	"github.com/tjnvr/blog/internal/generator/page/html/validation"
 	mdsubstitutions "github.com/tjnvr/blog/internal/generator/page/markdown/substitution"
 	"github.com/tjnvr/blog/internal/generator/section"
+	"github.com/tjnvr/blog/internal/relpath"
 )
 
-func (g *Generator) generatePages() error {
-	assetsPathTranslater := NewPathResolver(g.assetsDir, filepath.Join(g.buildDir, "assets"))
-	linksPathTranslater := NewPathResolver(g.contentDir, g.buildDir)
-
+func (g *Generator) generatePages(assetsPathTranslater, linksPathTranslater relpath.Resolver) error {
 	errs := make([]error, 0)
-	err := g.fs.Walk(g.contentDir, func(markDownFilePath string, info os.FileInfo, err error) error {
+
+	// Modified: Using afero.Walk to navigate the virtual/real file system seamlessly
+	err := afero.Walk(g.fs, g.ContentDir, func(markDownFilePath string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -37,19 +37,19 @@ func (g *Generator) generatePages() error {
 		}
 
 		// Page section is the directory between content dir and file name
-		pageSection, err := extractSection(g.contentDir, markDownFilePath)
+		pageSection, err := extractSection(g.ContentDir, markDownFilePath)
 		if err != nil {
 			errs = append(errs, err)
 			return nil
 		}
 
-		pageFilePathRelToContentDir, err := filepath.Rel(g.contentDir, markDownFilePath)
+		pageFilePathRelToContentDir, err := filepath.Rel(g.ContentDir, markDownFilePath)
 		if err != nil {
-			return fmt.Errorf("cannot compute relative path of %s from %s: %w", markDownFilePath, g.contentDir, err)
+			return fmt.Errorf("cannot compute relative path of %s from %s: %w", markDownFilePath, g.ContentDir, err)
 		}
 
-		htmlOutputPath := filepath.Join(g.buildDir, strings.TrimSuffix(pageFilePathRelToContentDir, ".md")+".html")
-		g.pagesGenerators = append(g.pagesGenerators, g.pageGeneratorFactory(markDownFilePath, htmlOutputPath, g.buildDir, pageSection, assetsPathTranslater, linksPathTranslater, g.sections, g.skipURLValidation))
+		htmlOutputPath := filepath.Join(g.BuildDir, strings.TrimSuffix(pageFilePathRelToContentDir, ".md")+".html")
+		g.pagesGenerators = append(g.pagesGenerators, g.pageGeneratorFactory(g.fs, markDownFilePath, htmlOutputPath, g.BuildDir, pageSection, assetsPathTranslater, linksPathTranslater, g.sections, g.skipURLValidation))
 		return nil
 	})
 
@@ -72,9 +72,8 @@ func (g *Generator) generatePages() error {
 	return nil
 }
 
-func defaultPageGeneratorFactory(sourceMDPath, destinationHTMLPath, buildDir, pageSection string, assetsPathTranslater, linksPathTranslater newPathResolver, sections []section.Section, skipURLValidation bool) PageGenerator {
+func defaultPageGeneratorFactory(fs afero.Fs, sourceMDPath, destinationHTMLPath, buildDir, pageSection string, assetsPathTranslater, linksPathTranslater relpath.Resolver, sections []section.Section, skipURLValidation bool) PageGenerator {
 	var (
-		fs                    = filesystem.NewOSFileSystem()
 		markdownSubstitutions = mdsubstitutions.NewRegistry(sourceMDPath)
 		HTMLSubstitutions     = htmlsubstitutions.NewRegistry(destinationHTMLPath, sourceMDPath, assetsPathTranslater, linksPathTranslater, sections, pageSection)
 		validations           = validation.NewRegistry(sections, skipURLValidation)

@@ -24,7 +24,6 @@ func TestFilesFinder_FindFiles_Success(t *testing.T) {
 		{
 			name: "multiple levels",
 			setup: func(fs afero.Fs) {
-				_ = fs.MkdirAll("a/b", 0755)
 				_ = afero.WriteFile(fs, "f1.txt", []byte(""), 0644)
 				_ = afero.WriteFile(fs, "a/f2.txt", []byte(""), 0644)
 				_ = afero.WriteFile(fs, "a/b/f3.txt", []byte(""), 0644)
@@ -34,7 +33,6 @@ func TestFilesFinder_FindFiles_Success(t *testing.T) {
 		{
 			name: "no files",
 			setup: func(fs afero.Fs) {
-				_ = fs.MkdirAll("empty", 0755)
 			},
 			expected: []string{},
 		},
@@ -72,23 +70,22 @@ func TestFilesFinder_FindFiles_Failure(t *testing.T) {
 func TestFilesFinder_FindFiles_Options(t *testing.T) {
 	tests := []struct {
 		name     string
-		opts     []filesFinderOptionsFunc
+		opts     []FilesFinderOption
 		setup    func(fs afero.Fs)
 		expected []string
 	}{
 		{
 			name: "WithLevel",
-			opts: []filesFinderOptionsFunc{WithLevel(1)},
+			opts: []FilesFinderOption{WithLevel(1)},
 			setup: func(fs afero.Fs) {
 				_ = afero.WriteFile(fs, "root.txt", []byte(""), 0644)
-				_ = fs.MkdirAll("sub", 0755)
 				_ = afero.WriteFile(fs, "sub/sub.txt", []byte(""), 0644)
 			},
 			expected: []string{"root.txt"},
 		},
 		{
 			name: "WithExtension",
-			opts: []filesFinderOptionsFunc{WithExtension(".go")},
+			opts: []FilesFinderOption{WithExtension(".go")},
 			setup: func(fs afero.Fs) {
 				_ = afero.WriteFile(fs, "a.txt", []byte(""), 0644)
 				_ = afero.WriteFile(fs, "b.go", []byte(""), 0644)
@@ -97,7 +94,7 @@ func TestFilesFinder_FindFiles_Options(t *testing.T) {
 		},
 		{
 			name: "WithPattern",
-			opts: []filesFinderOptionsFunc{WithPattern("^foo")},
+			opts: []FilesFinderOption{WithPattern("^foo")},
 			setup: func(fs afero.Fs) {
 				_ = afero.WriteFile(fs, "bar.txt", []byte(""), 0644)
 				_ = afero.WriteFile(fs, "foobar.go", []byte(""), 0644)
