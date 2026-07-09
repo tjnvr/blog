@@ -1,186 +1,265 @@
 package content
 
 import (
+	"errors"
+	"fmt"
+	"regexp"
+	"strings"
 	"testing"
+
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
 )
 
 type mockPathTranslater struct {
-	newPath string
+	resolveFn func(oldPath, fromPath string) (string, error)
 }
 
-func (m mockPathTranslater) GetNewPath(oldPath, fromPath string) (string, error) {
-	return m.newPath, nil
+func (m mockPathTranslater) Resolve(oldPath, fromPath string) (string, error) {
+	return m.resolveFn(oldPath, fromPath)
 }
 
-func TestConvertAssetsPath(t *testing.T) {
+func TestSubstituter_Resolve(t *testing.T) {
+	linkErr := uuid.New().String()
+	assetErr := uuid.New().String()
+	resLink := uuid.New().String() + ".html"
+	resAsset := uuid.New().String() + ".png"
+
 	tests := []struct {
-		name     string
-		html     string
-		filePath string
-		newPath  string
-		want     string
+		name        string
+		linkFn      func(string, string) (string, error)
+		assetFn     func(string, string) (string, error)
+		wantStr     string
+		wantErrMsgs []string
 	}{
 		{
-			name:     "replaces relative image path",
-			html:     `<img src="images/photo.png">`,
-			filePath: "content/page.md",
-			newPath:  "assets/photo.png",
-			want:     `<img src="assets/photo.png">`,
+			name: "Successful resolution of both links and assets",
+			linkFn: func(o, f string) (string, error) {
+				return resLink, nil
+			},
+			assetFn: func(o, f string) (string, error) {
+				return resAsset, nil
+			},
+			wantStr: fmt.Sprintf(`<a href="%s">Link</a> <img src="%s">`, resLink, resAsset),
 		},
 		{
-			name:     "preserves attributes after src",
-			html:     `<img src="images/photo.png" alt="a photo">`,
-			filePath: "content/page.md",
-			newPath:  "assets/photo.png",
-			want:     `<img src="assets/photo.png" alt="a photo">`,
-		},
-		{
-			name:     "preserves attributes before src",
-			html:     `<img alt="a photo" src="images/photo.png">`,
-			filePath: "content/page.md",
-			newPath:  "assets/photo.png",
-			want:     `<img alt="a photo" src="assets/photo.png">`,
-		},
-		{
-			name:     "skips http URL",
-			html:     `<img src="http://example.com/photo.png">`,
-			filePath: "content/page.md",
-			newPath:  "should-not-be-used",
-			want:     `<img src="http://example.com/photo.png">`,
-		},
-		{
-			name:     "skips https URL",
-			html:     `<img src="https://example.com/photo.png">`,
-			filePath: "content/page.md",
-			newPath:  "should-not-be-used",
-			want:     `<img src="https://example.com/photo.png">`,
-		},
-		{
-			name:     "skips absolute path",
-			html:     `<img src="/images/photo.png">`,
-			filePath: "content/page.md",
-			newPath:  "should-not-be-used",
-			want:     `<img src="/images/photo.png">`,
-		},
-		{
-			name:     "replaces multiple images",
-			html:     `<img src="a.png"><img src="b.png">`,
-			filePath: "content/page.md",
-			newPath:  "new.png",
-			want:     `<img src="new.png"><img src="new.png">`,
-		},
-		{
-			name:     "no img tags returns html unchanged",
-			html:     `<p>no images here</p>`,
-			filePath: "content/page.md",
-			newPath:  "unused",
-			want:     `<p>no images here</p>`,
+			name: "Joins errors when both translating sub-systems fail",
+			linkFn: func(o, f string) (string, error) {
+				return "", errors.New(linkErr)
+			},
+			assetFn: func(o, f string) (string, error) {
+				return "", errors.New(assetErr)
+			},
+			wantErrMsgs: []string{linkErr, assetErr},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// given
+			html := `<a href="link.md">Link</a> <img src="img.png">`
+
+			// setup
 			s := Substituter{
-				markdownSourcePath:    tt.filePath,
-				assetsPathsTranslater: mockPathTranslater{newPath: tt.newPath},
+				markdownSourcePath:    "index.md",
+				linksPathTranslater:   mockPathTranslater{resolveFn: tt.linkFn},
+				assetsPathsTranslater: mockPathTranslater{resolveFn: tt.assetFn},
 			}
-			got, err := s.convertAssetsPath(tt.html, tt.filePath)
-			if err != nil {
-				t.Fatalf("convertAssetsPath() unexpected error: %v", err)
-			}
-			if got != tt.want {
-				t.Errorf("convertAssetsPath() = %q, want %q", got, tt.want)
+
+			// test
+			got, err := s.Resolve(html)
+
+			// expect
+			if len(tt.wantErrMsgs) > 0 {
+				assert.Error(t, err)
+				for _, msg := range tt.wantErrMsgs {
+					assert.Contains(t, err.Error(), msg)
+				}
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.wantStr, got)
 			}
 		})
 	}
 }
 
-func TestConvertMdLinksPath(t *testing.T) {
+func TestSubstituter_ReplacePaths(t *testing.T) {
+	resPath := uuid.New().String()
+	errReason := uuid.New().String()
+	imgRe := regexp.MustCompile(`(src=")([^"]+)(")`)
+	hrefRe := regexp.MustCompile(`(href=")([^"]+)(")`)
+
 	tests := []struct {
-		name     string
-		html     string
-		filePath string
-		newPath  string
-		want     string
+		name       string
+		html       string
+		re         *regexp.Regexp
+		resolveFn  func(string, string) (string, error)
+		modifyFn   func(string) string
+		wantStr    string
+		wantErrMsg string
 	}{
 		{
-			name:     "replaces relative md link",
-			html:     `<a href="posts/hello.md">Hello</a>`,
-			filePath: "index.md",
-			newPath:  "posts/hello.html",
-			want:     `<a href="posts/hello.html">Hello</a>`,
+			name: "Substitutes relative asset path smoothly",
+			html: `<img src="sub/image.png">`,
+			re:   imgRe,
+			resolveFn: func(o, f string) (string, error) {
+				return resPath, nil
+			},
+			wantStr: fmt.Sprintf(`<img src="%s">`, resPath),
 		},
 		{
-			name:     "replaces parent relative md link",
-			html:     `<a href="../index.md">Home</a>`,
-			filePath: "posts/hello.md",
-			newPath:  "../index.html",
-			want:     `<a href="../index.html">Home</a>`,
+			name: "Applies path modifier callback before calling translater",
+			html: `<a href="about">About</a>`,
+			re:   hrefRe,
+			modifyFn: func(p string) string {
+				return p + ".processed"
+			},
+			resolveFn: func(o, f string) (string, error) {
+				if strings.HasSuffix(o, ".processed") {
+					return resPath, nil
+				}
+				return "", errors.New("missing suffix")
+			},
+			wantStr: fmt.Sprintf(`<a href="%s">About</a>`, resPath),
 		},
 		{
-			name:     "skips http URL",
-			html:     `<a href="http://example.com/page.md">External</a>`,
-			filePath: "index.md",
-			newPath:  "should-not-be-used",
-			want:     `<a href="http://example.com/page.md">External</a>`,
+			name: "Skips external http addresses",
+			html: `<img src="http://example.com/avatar.jpg">`,
+			re:   imgRe,
+			resolveFn: func(o, f string) (string, error) {
+				return uuid.New().String(), nil
+			},
+			wantStr: `<img src="http://example.com/avatar.jpg">`,
 		},
 		{
-			name:     "skips https URL",
-			html:     `<a href="https://example.com/page.md">External</a>`,
-			filePath: "index.md",
-			newPath:  "should-not-be-used",
-			want:     `<a href="https://example.com/page.md">External</a>`,
+			name: "Skips external https addresses",
+			html: `<img src="https://example.com/avatar.jpg">`,
+			re:   imgRe,
+			resolveFn: func(o, f string) (string, error) {
+				return uuid.New().String(), nil
+			},
+			wantStr: `<img src="https://example.com/avatar.jpg">`,
 		},
 		{
-			name:     "skips absolute path",
-			html:     `<a href="/pages/about.md">About</a>`,
-			filePath: "index.md",
-			newPath:  "should-not-be-used",
-			want:     `<a href="/pages/about.md">About</a>`,
+			name: "Skips local absolute routes",
+			html: `<img src="/global-assets/avatar.jpg">`,
+			re:   imgRe,
+			resolveFn: func(o, f string) (string, error) {
+				return uuid.New().String(), nil
+			},
+			wantStr: `<img src="/global-assets/avatar.jpg">`,
 		},
 		{
-			name:     "ignores non-md links",
-			html:     `<a href="style.css">CSS</a>`,
-			filePath: "index.md",
-			newPath:  "should-not-be-used",
-			want:     `<a href="style.css">CSS</a>`,
-		},
-		{
-			name:     "replaces multiple md links",
-			html:     `<a href="a.md">A</a> and <a href="b.md">B</a>`,
-			filePath: "index.md",
-			newPath:  "new.html",
-			want:     `<a href="new.html">A</a> and <a href="new.html">B</a>`,
-		},
-		{
-			name:     "preserves other attributes",
-			html:     `<a class="nav" href="page.md" title="Page">Link</a>`,
-			filePath: "index.md",
-			newPath:  "page.html",
-			want:     `<a class="nav" href="page.html" title="Page">Link</a>`,
-		},
-		{
-			name:     "no links returns html unchanged",
-			html:     `<p>no links here</p>`,
-			filePath: "index.md",
-			newPath:  "unused",
-			want:     `<p>no links here</p>`,
+			name: "Accumulates multiple sequential processing errors",
+			html: `<img src="err1.png"><img src="err2.png">`,
+			re:   imgRe,
+			resolveFn: func(o, f string) (string, error) {
+				return "", errors.New(errReason)
+			},
+			wantErrMsg: fmt.Sprintf("%s\n%s", errReason, errReason),
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// given
+			targetFile := uuid.New().String()
+
+			// setup
+			s := Substituter{markdownSourcePath: "docs/index.md"}
+			mock := mockPathTranslater{resolveFn: tt.resolveFn}
+
+			// test
+			got, err := s.replacePaths(tt.html, targetFile, tt.re, mock, tt.modifyFn)
+
+			// expect
+			if tt.wantErrMsg != "" {
+				assert.Error(t, err)
+				assert.Equal(t, tt.wantErrMsg, err.Error())
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.wantStr, got)
+			}
+		})
+	}
+}
+
+func TestSubstituter_ConvertMdLinksPath(t *testing.T) {
+	resLink := uuid.New().String() + ".html"
+
+	tests := []struct {
+		name    string
+		html    string
+		wantStr string
+	}{
+		{
+			name:    "Converts typical relative markdown link extension",
+			html:    `<a href="posts/hello.md">Hello</a>`,
+			wantStr: fmt.Sprintf(`<a href="%s">Hello</a>`, resLink),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// given
+			targetFile := uuid.New().String()
+
+			// setup
 			s := Substituter{
-				markdownSourcePath:  tt.filePath,
-				linksPathTranslater: mockPathTranslater{newPath: tt.newPath},
+				markdownSourcePath: "index.md",
+				linksPathTranslater: mockPathTranslater{
+					resolveFn: func(oldPath, fromPath string) (string, error) {
+						return resLink, nil
+					},
+				},
 			}
-			got, err := s.convertMdLinksPath(tt.html, tt.filePath)
-			if err != nil {
-				t.Fatalf("convertMdLinksPath() unexpected error: %v", err)
+
+			// test
+			got, err := s.convertMdLinksPath(tt.html, targetFile)
+
+			// expect
+			assert.NoError(t, err)
+			assert.Equal(t, tt.wantStr, got)
+		})
+	}
+}
+
+func TestSubstituter_ConvertAssetsPath(t *testing.T) {
+	resAsset := uuid.New().String() + ".png"
+
+	tests := []struct {
+		name    string
+		html    string
+		wantStr string
+	}{
+		{
+			name:    "Swaps basic image node relative source attribute",
+			html:    `<img src="images/photo.png">`,
+			wantStr: fmt.Sprintf(`<img src="%s">`, resAsset),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// given
+			targetFile := uuid.New().String()
+
+			// setup
+			s := Substituter{
+				markdownSourcePath: "index.md",
+				assetsPathsTranslater: mockPathTranslater{
+					resolveFn: func(oldPath, fromPath string) (string, error) {
+						return resAsset, nil
+					},
+				},
 			}
-			if got != tt.want {
-				t.Errorf("convertMdLinksPath() = %q, want %q", got, tt.want)
-			}
+
+			// test
+			got, err := s.convertAssetsPath(tt.html, targetFile)
+
+			// expect
+			assert.NoError(t, err)
+			assert.Equal(t, tt.wantStr, got)
 		})
 	}
 }

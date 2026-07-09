@@ -2,11 +2,10 @@ package page
 
 import (
 	_ "embed"
-
 	"fmt"
 	"path/filepath"
 
-	"github.com/tjnvr/blog/internal/generator/page/filesystem"
+	"github.com/spf13/afero"
 	htmlsubstitution "github.com/tjnvr/blog/internal/generator/page/html/substitution"
 	"github.com/tjnvr/blog/internal/generator/page/html/validation"
 	"github.com/tjnvr/blog/internal/generator/page/markdown"
@@ -23,7 +22,7 @@ type Generator struct {
 	htmlContentBytes      []byte
 	destinationHTMLPath   string
 	sectionName           string
-	fs                    filesystem.FileSystem
+	fs                    afero.Fs
 	markdownSubstitutions *mdsubstitution.Registry
 	HTMLSubstitutions     *htmlsubstitution.Registry
 	validations           *validation.Registry
@@ -34,7 +33,7 @@ func NewGenerator(
 	htmlOutputPath string,
 	buildDir string,
 	sectionName string,
-	fs filesystem.FileSystem,
+	fs afero.Fs,
 	markdownSubstitutions *mdsubstitution.Registry,
 	HTMLSubstitutions *htmlsubstitution.Registry,
 	validations *validation.Registry,
@@ -52,22 +51,22 @@ func NewGenerator(
 	}
 }
 
-// Generate generates an html page by projecting the markdown file in the HTML template.
+// Generate generates an HTML page by projecting the markdown file into the HTML template.
 func (g *Generator) Generate() error {
-	// Read markdown file
-	markdDownSourceContent, err := g.fs.ReadFile(g.sourceMDPath)
+	// Read markdown file using afero utility
+	markdownSourceContent, err := afero.ReadFile(g.fs, g.sourceMDPath)
 	if err != nil {
 		return fmt.Errorf("reading %s: %w", g.sourceMDPath, err)
 	}
 
-	// Apply needed substitutions and generation in mardkdown
-	markdDownStringSourceContent, err := g.markdownSubstitutions.Apply(string(markdDownSourceContent))
+	// Apply needed substitutions and generation in markdown
+	markdownStringSourceContent, err := g.markdownSubstitutions.Apply(string(markdownSourceContent))
 	if err != nil {
-		return fmt.Errorf("failed to project content inside the page template: %w", err)
+		return fmt.Errorf("failed to apply markdown substitutions: %w", err)
 	}
 
-	// Convert marddown to HTML
-	htmlContent, err := markdown.NewConverter().Convert([]byte(markdDownStringSourceContent))
+	// Convert markdown to HTML
+	htmlContent, err := markdown.NewConverter().Convert([]byte(markdownStringSourceContent))
 	if err != nil {
 		return fmt.Errorf("failed to convert markdown content: %w", err)
 	}
@@ -78,14 +77,13 @@ func (g *Generator) Generate() error {
 		return fmt.Errorf("failed to project content inside the page template: %w", err)
 	}
 
-	// Ensure output directory exists
-	if err := g.fs.MkdirAll(filepath.Dir(g.destinationHTMLPath), 0755); err != nil {
-		return fmt.Errorf("failed to create output directory: %w", err)
+	if err := g.fs.MkdirAll(filepath.Dir(g.destinationHTMLPath), 0744); err != nil {
+		return fmt.Errorf("failed to MkdirAll for %s: %w", filepath.Dir(g.destinationHTMLPath), err)
 	}
 
-	// Write HTML file
+	// Write HTML file using afero utility
 	htmlContentBytes := []byte(htmlContent)
-	if err := g.fs.WriteFile(g.destinationHTMLPath, htmlContentBytes, 0644); err != nil {
+	if err := afero.WriteFile(g.fs, g.destinationHTMLPath, htmlContentBytes, 0644); err != nil {
 		return fmt.Errorf("failed to write %s: %w", g.destinationHTMLPath, err)
 	}
 
@@ -94,6 +92,8 @@ func (g *Generator) Generate() error {
 	return nil
 }
 
+// Validate triggers structural validation checks on the generated HTML content.
+// Note: This must be called after a successful invocation of Generate().
 func (g *Generator) Validate() error {
 	return g.validations.Validate(g.destinationHTMLPath, g.buildDir, g.htmlContentBytes)
 }

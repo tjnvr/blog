@@ -1,10 +1,14 @@
 version: "3"
 
+env:
+  CONTENT_DIR: content/markdown
+  BUILD_DIR: target/build
+  ASSETS_DIR: content/assets
+  ASSETS_OUT_DIR: target/build/assets
+  SCRIPTS_DIR: scripts
+  SCRIPTS_OUT_DIR: target/build/scripts
+
 vars:
-  BUILD_SITE_DIR: target/build
-  BUILD_DIR: target
-  CONTENT_DIR: content
-  MARKDOWN_DIR: content/markdown
   IMAGES_DIR: content/assets/images
   GOLANGCI_LINT_VERSION: v2.8.0
   TAILWIND_VERSION: v4.0.6
@@ -70,6 +74,7 @@ tasks:
   fmt:
     desc: Format all Go files
     cmds:
+      - go mod tidy
       - go fmt ./...
 
   fmt:check:
@@ -127,7 +132,7 @@ tasks:
       - css:build
     sources:
       - "./{{.BUILD_DIR}}/bin/blog"
-      - "{{.MARKDOWN_DIR}}/**/*.md"
+      - "{{.CONTENT_DIR}}/**/*.md"
       - "{{.IMAGES_DIR}}/**/*.png"
       - "{{.IMAGES_DIR}}/**/*.jpg"
       - "{{.IMAGES_DIR}}/**/*.jpeg"
@@ -144,10 +149,10 @@ tasks:
     sources:
       - styles/input.css
     generates:
-      - "{{.BUILD_SITE_DIR}}/styles.css"
+      - "{{.BUILD_DIR}}/styles.css"
     cmds:
       - ./{{.BUILD_DIR}}/bin/tailwindcss -i ./styles/input.css -o
-        ./{{.BUILD_SITE_DIR}}/styles.css --minify
+        ./{{.BUILD_DIR}}/styles.css --minify
 
   clean:
     desc: Remove build artifacts
@@ -158,7 +163,7 @@ tasks:
     deps:
     - task: generate
     cmds:
-        - browser-sync start --no-ui --server {{.BUILD_SITE_DIR}}
+        - browser-sync start --no-ui --server {{.BUILD_DIR}}
 
   dev:
     desc: Serve locally with live reload

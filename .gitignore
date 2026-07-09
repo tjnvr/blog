@@ -1,4 +1,9 @@
-.zed
+.zed/**
+!.zed/debug.json
+
+# Delve binaries
+__debug_*
+
 .claude
 
 # MacOS
