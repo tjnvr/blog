@@ -29,8 +29,11 @@ func ExampleDirCopier() {
 
 	// Verify the destination
 	finder = fs.NewFilesFinder(memFs)
-	files, _ := finder.FindFiles("destination")
-
+	files, err := finder.FindFiles("destination")
+	if err != nil {
+		fmt.Printf("FindFiles failed: %v\n", err)
+		return
+	}
 	// Output will contain the paths relative to the destination directory
 	for _, f := range files {
 		fmt.Println(f)

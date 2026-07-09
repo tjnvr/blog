@@ -41,8 +41,9 @@ func (c dirCopier) CopyDir(filesFinder FilesFinder, from, to string) error {
 		}
 
 		destinationPath := filepath.Join(to, file)
-
-		// Ensure the destination directory exists
+		if err := c.fs.MkdirAll(filepath.Dir(destinationPath), 0744); err != nil {
+			return fmt.Errorf("MkdirAll err: %v", err)
+		}
 		err = afero.WriteFile(c.fs, destinationPath, content, 0644)
 		if err != nil {
 			return fmt.Errorf("afero.WriteFile err for '%s': %v", destinationPath, err)

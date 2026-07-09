@@ -122,5 +122,4 @@ func TestDirCopier_CopyDir_ShouldReturnErrorOnWriteFileFailure(t *testing.T) {
 
 	// expect
 	assert.ErrorContains(t, err, "operation not permitted")
-
 }

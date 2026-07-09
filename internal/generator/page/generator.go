@@ -3,6 +3,7 @@ package page
 import (
 	_ "embed"
 	"fmt"
+	"path/filepath"
 
 	"github.com/spf13/afero"
 	htmlsubstitution "github.com/tjnvr/blog/internal/generator/page/html/substitution"
@@ -74,6 +75,10 @@ func (g *Generator) Generate() error {
 	htmlContent, err = g.HTMLSubstitutions.Apply(g.htmlPageTemplate, htmlContent)
 	if err != nil {
 		return fmt.Errorf("failed to project content inside the page template: %w", err)
+	}
+
+	if err := g.fs.MkdirAll(filepath.Dir(g.destinationHTMLPath), 0744); err != nil {
+		return fmt.Errorf("failed to MkdirAll for %s: %w", filepath.Dir(g.destinationHTMLPath), err)
 	}
 
 	// Write HTML file using afero utility
