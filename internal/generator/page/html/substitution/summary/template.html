@@ -1,0 +1,23 @@
+{{- define "node" -}}
+<li class="ml-4 border-l border-gray-200 dark:border-gray-700 pl-4 py-1">
+    <a href="#{{.ID}}" class="{{ if eq .Level 2 }}text-sm{{ else }}text-xs{{ end }}block">{{.Text}}</a>
+    {{- if .Children -}}
+        <ul>
+            {{- range .Children -}}
+                {{- template "node" . -}}
+            {{- end -}}
+        </ul>
+    {{- end -}}
+</li>
+{{- end -}}
+
+{{- define "toc" -}}
+<nav>
+    <ul>
+        {{- range . -}}
+            {{- template "node" . -}}
+        {{- end -}}
+    </ul>
+</nav>
+<hr class="border-gray-200 dark:border-gray-700 my-6">
+{{- end -}}

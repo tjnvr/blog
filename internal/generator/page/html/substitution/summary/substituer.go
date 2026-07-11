@@ -1,28 +1,49 @@
 package summary
 
 import (
+	"bytes"
+	_ "embed"
+	"html/template"
+
 	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
 )
 
-var headingRe = regexp.MustCompile(`<h([2-6])[^>]*id="([^"]+)"[^>]*>([^<]+)(?:<a[^>]*>[^<]*</a>)?</h[2-6]>`)
+var (
+	// The HTML template used to render the summary
+	//
+	// https://pkg.go.dev/html/template
+	//go:embed template.html
+	summaryTemplate string
 
-func textSizeClass(depth int) string {
-	switch depth {
-	case 1:
-		return "text-sm"
-	default:
-		return "text-xs"
+	// The summary include all headings from h2 to h6 (h1 being the page title is never listed in the summary)
+	headingsRegex = regexp.MustCompile(`<h([2-6])[^>]*id="([^"]+)"[^>]*>([^<]+)(?:<a[^>]*>[^<]*</a>)?</h[2-6]>`)
+)
+
+type (
+	Heading struct {
+		ID    string
+		Level int
+		Text  string
 	}
-}
+
+	headingNode struct {
+		Heading
+		Children []*headingNode
+	}
+)
 
 // Substituter resolves the {{summary}} placeholder with a generated table of contents.
-type Substituter struct{}
+type Substituter struct {
+	template *template.Template
+}
 
 func NewSubstituer() Substituter {
-	return Substituter{}
+	return Substituter{
+		template: template.Must(template.New("summary").Parse(summaryTemplate)),
+	}
 }
 
 func (s Substituter) Placeholder() string {
@@ -30,57 +51,62 @@ func (s Substituter) Placeholder() string {
 }
 
 func (s Substituter) Resolve(content string) (string, error) {
-	matches := headingRe.FindAllStringSubmatch(content, -1)
-	if len(matches) == 0 {
+	headings := listHeadings(content)
+	if len(headings) == 0 {
 		return "", nil
 	}
 
-	type heading struct {
-		level int
-		id    string
-		text  string
+	headingTrees := buildHeadingTrees(headings)
+
+	var buf bytes.Buffer
+	err := s.template.ExecuteTemplate(&buf, "toc", headingTrees)
+	if err != nil {
+		return "", fmt.Errorf("execute err: %v", err)
 	}
 
-	items := make([]heading, len(matches))
+	return buf.String(), nil
+}
+
+func listHeadings(content string) []Heading {
+	matches := headingsRegex.FindAllStringSubmatch(content, -1)
+	if len(matches) == 0 {
+		return nil
+	}
+
+	headings := make([]Heading, len(matches))
 	for i, m := range matches {
+		// Ensured by the [headingsRegex]
 		level, _ := strconv.Atoi(m[1])
-		items[i] = heading{level: level, id: m[2], text: strings.TrimSpace(m[3])}
+		headings[i] = Heading{Level: level, ID: m[2], Text: strings.TrimSpace(m[3])}
 	}
 
-	var sb strings.Builder
-	sb.WriteString(`<hr class="border-gray-200 dark:border-gray-700">`)
-	sb.WriteString("<nav>")
+	return headings
+}
 
-	prevLevel := items[0].level - 1
-	depth := 0
+func buildHeadingTrees(headings []Heading) []*headingNode {
+	if len(headings) == 0 {
+		return nil
+	}
 
-	for _, item := range items {
-		switch {
-		case item.level > prevLevel:
-			for i := prevLevel; i < item.level; i++ {
-				sb.WriteString(`<ul>`)
-				depth++
-			}
-		case item.level == prevLevel:
-			sb.WriteString("</li>")
-		default:
-			sb.WriteString("</li>")
-			for i := item.level; i < prevLevel; i++ {
-				sb.WriteString("</ul></li>")
-				depth--
-			}
+	var roots []*headingNode
+	stack := make([]*headingNode, 0, 8)
+
+	for _, h := range headings {
+		n := &headingNode{Heading: h}
+
+		// Pop until we find a proper parent
+		for len(stack) > 0 && stack[len(stack)-1].Level >= h.Level {
+			stack = stack[:len(stack)-1]
 		}
-		fmt.Fprintf(&sb, `<li><a href="#%s" class="%s">%s</a>`, item.id, textSizeClass(depth), item.text)
-		prevLevel = item.level
+
+		if len(stack) == 0 {
+			roots = append(roots, n)
+		} else {
+			stack[len(stack)-1].Children = append(stack[len(stack)-1].Children, n)
+		}
+
+		stack = append(stack, n)
 	}
 
-	sb.WriteString("</li>")
-	for depth > 1 {
-		sb.WriteString("</ul></li>")
-		depth--
-	}
-	sb.WriteString("</ul></nav>")
-	sb.WriteString(`<hr class="border-gray-200 dark:border-gray-700">`)
-
-	return sb.String(), nil
+	return roots
 }
