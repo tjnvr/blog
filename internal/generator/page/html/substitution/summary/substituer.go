@@ -61,7 +61,7 @@ func (s Substituter) Resolve(content string) (string, error) {
 	var buf bytes.Buffer
 	err := s.template.ExecuteTemplate(&buf, "toc", headingTrees)
 	if err != nil {
-		return "", fmt.Errorf("Execute err: %v", err)
+		return "", fmt.Errorf("execute err: %v", err)
 	}
 
 	return buf.String(), nil
