@@ -96,7 +96,7 @@ func (g *Generator) Generate() error {
 	}
 
 	// Fixed: Copying JS scripts from ScriptsDir to ScriptsOutDir instead of AssetsDir
-	if err := g.dirCopier.CopyDir(mfs.NewFilesFinder(g.fs, mfs.WithExtension("js")), g.ScriptsDir, g.ScriptsOutDir); err != nil {
+	if err := g.dirCopier.CopyDir(mfs.NewFilesFinder(g.fs, mfs.WithExtension(".js")), g.ScriptsDir, g.ScriptsOutDir); err != nil {
 		return fmt.Errorf("CopyDir scripts err: %v", err)
 	}
 
