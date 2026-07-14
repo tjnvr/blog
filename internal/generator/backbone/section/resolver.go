@@ -16,12 +16,20 @@ type (
 		contentDirectory string
 	}
 
+	// Resolver discovers site sections within a content directory.
 	Resolver interface {
+		// Resolve returns one Section for every index.md found under the
+		// content directory, including the root section.
 		Resolve() ([]Section, error)
+		// ResolveForFile returns the Section that owns the Markdown file at
+		// markdownPath, determined by its first-level directory under the
+		// content directory.
 		ResolveForFile(markdownPath string) (Section, error)
 	}
 )
 
+// NewResolver returns a Resolver that reads sections from contentDirectory
+// using fs. Section index files are located by matching the name "index.md".
 func NewResolver(fs afero.Fs, contentDirectory string) Resolver {
 	return &sectionResolver{
 		fs:               fs,
