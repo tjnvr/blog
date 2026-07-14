@@ -15,12 +15,12 @@ func TestArticle_Print(t *testing.T) {
 	}{
 		{
 			name: "no date",
-			a:    Article{name: "Hello", filePath: "hello.md"},
+			a:    Article{name: "Hello", markdownPath: "hello.md"},
 			want: "- [Hello](hello.md)",
 		},
 		{
 			name: "with date",
-			a:    Article{name: "Hello", filePath: "hello.md", createdAt: "2024-03-15"},
+			a:    Article{name: "Hello", markdownPath: "hello.md", createdAt: "2024-03-15"},
 			want: "- [Hello](hello.md) · *2024-03-15*",
 		},
 	}

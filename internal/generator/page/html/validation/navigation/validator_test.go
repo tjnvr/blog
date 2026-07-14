@@ -1,42 +1,58 @@
 package navigation
 
 import (
-	"strings"
+	"errors"
 	"testing"
 
-	"github.com/tjnvr/blog/internal/generator/section"
+	"github.com/stretchr/testify/assert"
+
+	"github.com/tjnvr/blog/internal/generator/backbone/section"
+	"github.com/tjnvr/blog/internal/relpath"
 )
 
-func TestNewValidator(t *testing.T) {
-	v := NewValidator([]section.Section{
-		{DirName: "", DisplayName: "Accueil"},
-		{DirName: "posts", DisplayName: "Posts"},
-		{DirName: "about", DisplayName: "About"},
-	})
-	if v == nil {
-		t.Fatal("NewValidator returned nil")
-		return
-	}
-	if len(v.sections) != 3 {
-		t.Errorf("expected 3 sections (home + 2), got %d", len(v.sections))
-	}
+type fakeSectionResolver struct {
+	sections []section.Section
+	err      error
+}
+
+func (f fakeSectionResolver) Resolve() ([]section.Section, error) {
+	return f.sections, f.err
+}
+
+func (f fakeSectionResolver) ResolveForFile(string) (section.Section, error) {
+	return section.Section{}, nil
+}
+
+func TestNewValidator_ShouldCreateValidValidator(t *testing.T) {
+	// setup
+	v := NewValidator(fakeSectionResolver{}, relpath.NewResolver("content", "target"))
+
+	// expect
+	assert.NotNil(t, v)
 }
 
 func TestValidator_Validate(t *testing.T) {
+	// given
+	sections := []section.Section{
+		{HomePath: "content/markdown/index.md", DisplayName: "Accueil"},
+		{HomePath: "content/markdown/posts/index.md", DisplayName: "Posts"},
+		{HomePath: "content/markdown/about/index.md", DisplayName: "About"},
+	}
+	pathResolver := relpath.NewResolver("content/markdown", "target/build", relpath.WithExtension(".html"))
+
 	tests := []struct {
 		name       string
 		sections   []section.Section
+		resolveErr error
+		htmlPath   string
 		html       string
 		wantErrors int
 		wantMsg    []string
 	}{
 		{
-			name: "valid nav with all sections from root",
-			sections: []section.Section{
-				{DirName: "", DisplayName: "Accueil"},
-				{DirName: "posts", DisplayName: "Posts"},
-				{DirName: "about", DisplayName: "About"},
-			},
+			name:     "valid nav from the root page",
+			sections: sections,
+			htmlPath: "target/build/index.html",
 			html: `<html><body>
 				<nav class="flex gap-4">
 					<a href="index.html">Accueil</a>
@@ -48,17 +64,14 @@ func TestValidator_Validate(t *testing.T) {
 			wantErrors: 0,
 		},
 		{
-			name: "valid nav with all sections from section depth",
-			sections: []section.Section{
-				{DirName: "", DisplayName: "Accueil"},
-				{DirName: "posts", DisplayName: "Posts"},
-				{DirName: "about", DisplayName: "About"},
-			},
+			name:     "valid nav from a nested section page",
+			sections: sections,
+			htmlPath: "target/build/about/index.html",
 			html: `<html><body>
 				<nav class="flex gap-4">
 					<a href="../index.html">Accueil</a>
 					<a href="../posts/index.html">Posts</a>
-					<a href="../about/index.html">About</a>
+					<a href="index.html">About</a>
 				</nav>
 				<p>Content</p>
 			</body></html>`,
@@ -66,18 +79,16 @@ func TestValidator_Validate(t *testing.T) {
 		},
 		{
 			name:       "missing nav element entirely",
-			sections:   []section.Section{{DirName: "", DisplayName: "Accueil"}, {DirName: "posts", DisplayName: "Posts"}},
+			sections:   sections,
+			htmlPath:   "target/build/index.html",
 			html:       `<html><body><p>No nav here</p></body></html>`,
 			wantErrors: 1,
 			wantMsg:    []string{"missing <nav> element"},
 		},
 		{
-			name: "nav missing a section link",
-			sections: []section.Section{
-				{DirName: "", DisplayName: "Accueil"},
-				{DirName: "posts", DisplayName: "Posts"},
-				{DirName: "about", DisplayName: "About"},
-			},
+			name:     "nav missing a section link and display name",
+			sections: sections,
+			htmlPath: "target/build/index.html",
 			html: `<html><body>
 				<nav>
 					<a href="index.html">Accueil</a>
@@ -85,75 +96,47 @@ func TestValidator_Validate(t *testing.T) {
 				</nav>
 			</body></html>`,
 			wantErrors: 2,
-			wantMsg:    []string{"missing link to section \"about\"", "missing display name \"About\""},
+			wantMsg: []string{
+				`missing link to section "content/markdown/about/index.md"`,
+				`missing display name "About"`,
+			},
 		},
 		{
-			name:     "nav missing home link",
-			sections: []section.Section{{DirName: "", DisplayName: "Accueil"}, {DirName: "posts", DisplayName: "Posts"}},
-			html: `<html><body>
-				<nav>
-					<a href="posts/index.html">Posts</a>
-				</nav>
-			</body></html>`,
-			wantErrors: 2,
-			wantMsg:    []string{"missing home link (Accueil)", "missing home href"},
-		},
-		{
-			name:     "nav with home but wrong display name",
-			sections: []section.Section{{DirName: "", DisplayName: "Accueil"}},
-			html: `<html><body>
-				<nav>
-					<a href="index.html">Home</a>
-				</nav>
-			</body></html>`,
+			name:       "propagates sectionResolver error",
+			resolveErr: errors.New("boom"),
+			htmlPath:   "target/build/index.html",
+			html:       `<html><body><nav></nav></body></html>`,
 			wantErrors: 1,
-			wantMsg:    []string{"missing home link (Accueil)"},
+			wantMsg:    []string{"sectionResolver.Resolve err"},
 		},
 		{
-			name:     "only home section",
-			sections: []section.Section{{DirName: "", DisplayName: "Accueil"}},
-			html: `<html><body>
-				<nav>
-					<a href="index.html">Accueil</a>
-				</nav>
-			</body></html>`,
-			wantErrors: 0,
-		},
-		{
-			name: "home display name from root index.md title",
+			name: "propagates pathResolver error for a section outside contentDirectory",
 			sections: []section.Section{
-				{DirName: "", DisplayName: "Bienvenue sur mon blog"},
-				{DirName: "posts", DisplayName: "All Articles"},
+				{HomePath: "other/index.md", DisplayName: "Elsewhere"},
 			},
-			html: `<html><body>
-				<nav>
-					<a href="index.html">Bienvenue sur mon blog</a>
-					<a href="posts/index.html">All Articles</a>
-				</nav>
-			</body></html>`,
-			wantErrors: 0,
+			htmlPath:   "target/build/index.html",
+			html:       `<html><body><nav></nav></body></html>`,
+			wantErrors: 1,
+			wantMsg:    []string{"cannot resolve expected href"},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			v := NewValidator(tt.sections)
-			errs := v.Validate("test.html", "/build", []byte(tt.html))
+			// setup
+			v := NewValidator(fakeSectionResolver{sections: tt.sections, err: tt.resolveErr}, pathResolver)
 
-			if len(errs) != tt.wantErrors {
-				t.Errorf("Validate() returned %d errors, want %d: %v", len(errs), tt.wantErrors, errs)
+			// test
+			errs := v.Validate(tt.htmlPath, "target/build", []byte(tt.html))
+
+			// expect
+			assert.Len(t, errs, tt.wantErrors)
+			allErrs := ""
+			for _, e := range errs {
+				allErrs += e.Error() + "\n"
 			}
-
-			if len(tt.wantMsg) > 0 {
-				allErrs := ""
-				for _, e := range errs {
-					allErrs += e.Error() + "\n"
-				}
-				for _, msg := range tt.wantMsg {
-					if !strings.Contains(allErrs, msg) {
-						t.Errorf("expected error containing %q, got:\n%s", msg, allErrs)
-					}
-				}
+			for _, msg := range tt.wantMsg {
+				assert.Contains(t, allErrs, msg)
 			}
 		})
 	}

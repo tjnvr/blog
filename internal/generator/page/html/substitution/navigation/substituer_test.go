@@ -1,205 +1,210 @@
 package navigation
 
 import (
-	"strings"
+	"errors"
+	"fmt"
 	"testing"
 
-	"github.com/tjnvr/blog/internal/generator/section"
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
+
+	"github.com/tjnvr/blog/internal/generator/backbone/section"
 )
 
-func TestSubstituer_Placeholder(t *testing.T) {
-	s := NewSubstituer(nil, "")
-	if got := s.Placeholder(); got != "{{navigation}}" {
-		t.Errorf("Placeholder() = %q, want %q", got, "{{navigation}}")
-	}
+type mockPathResolver struct {
+	ResolveFunc func(oldPath, fromPath string) (string, error)
 }
 
-func TestSubstituer_Resolve(t *testing.T) {
+func (m *mockPathResolver) Resolve(oldPath, fromPath string) (string, error) {
+	if m.ResolveFunc != nil {
+		return m.ResolveFunc(oldPath, fromPath)
+	}
+	return "", errors.New("not implemented")
+}
+
+type mockSectionResolver struct {
+	ResolveFunc        func() ([]section.Section, error)
+	ResolveForFileFunc func(markdownSourceFile string) (section.Section, error)
+}
+
+func (m *mockSectionResolver) Resolve() ([]section.Section, error) {
+	if m.ResolveFunc != nil {
+		return m.ResolveFunc()
+	}
+	return nil, errors.New("not implemented")
+}
+
+func (m *mockSectionResolver) ResolveForFile(markdownSourceFile string) (section.Section, error) {
+	if m.ResolveForFileFunc != nil {
+		return m.ResolveForFileFunc(markdownSourceFile)
+	}
+	return section.Section{}, errors.New("not implemented")
+}
+
+// navAnchor mirrors the actual rendering of template.html's "node" definition.
+func navAnchor(href, text string, focused bool) string {
+	class := "nav-link font-semibold"
+	if focused {
+		class = "nav-link font-semibold is-active"
+	}
+	return fmt.Sprintf(`<a href="%s" class="%s">%s</a>`, href, class, text)
+}
+
+func TestSubstituter_Placeholder_ShouldReturnCorrectPlaceholder(t *testing.T) {
+	// setup
+	substituter := NewSubstituer(&mockPathResolver{}, &mockSectionResolver{}, "", "")
+
+	// test
+	result := substituter.Placeholder()
+
+	// expect
+	assert.Equal(t, "{{navigation}}", result)
+}
+
+func TestNewSubstituer_ShouldCreateValidSubstituter(t *testing.T) {
+	// given
+	markdownSourcePath := uuid.New().String()
+	htmlPath := uuid.New().String()
+
+	// test
+	substituter := NewSubstituer(&mockPathResolver{}, &mockSectionResolver{}, markdownSourcePath, htmlPath)
+
+	// expect
+	assert.NotNil(t, substituter.template)
+}
+
+func TestSubstituter_Resolve_ShouldCallCollaboratorsWithExpectedArguments(t *testing.T) {
+	// given
+	markdownSourcePath := uuid.New().String()
+	htmlPath := uuid.New().String()
+	sect := section.Section{HomePath: uuid.New().String(), DisplayName: uuid.New().String()}
+	href := uuid.New().String()
+
+	// setup
+	var capturedMarkdownSourcePath, capturedOldPath, capturedFromPath string
+	pathResolver := &mockPathResolver{
+		ResolveFunc: func(oldPath, fromPath string) (string, error) {
+			capturedOldPath = oldPath
+			capturedFromPath = fromPath
+			return href, nil
+		},
+	}
+	sectionsResolver := &mockSectionResolver{
+		ResolveFunc: func() ([]section.Section, error) {
+			return []section.Section{sect}, nil
+		},
+		ResolveForFileFunc: func(markdownSourceFile string) (section.Section, error) {
+			capturedMarkdownSourcePath = markdownSourceFile
+			return sect, nil
+		},
+	}
+	substituter := NewSubstituer(pathResolver, sectionsResolver, markdownSourcePath, htmlPath)
+
+	// test
+	_, err := substituter.Resolve("")
+
+	// expect
+	assert.NoError(t, err)
+	assert.Equal(t, markdownSourcePath, capturedMarkdownSourcePath)
+	assert.Equal(t, sect.HomePath, capturedOldPath)
+	assert.Equal(t, htmlPath, capturedFromPath)
+}
+
+func TestSubstituter_Resolve(t *testing.T) {
+	// given
+	sectionA := section.Section{HomePath: uuid.New().String(), DisplayName: uuid.New().String()}
+	sectionB := section.Section{HomePath: uuid.New().String(), DisplayName: uuid.New().String()}
+	hrefA := uuid.New().String()
+	hrefB := uuid.New().String()
+	hrefs := map[string]string{sectionA.HomePath: hrefA, sectionB.HomePath: hrefB}
+	notPresentSection := section.Section{HomePath: uuid.New().String(), DisplayName: uuid.New().String()}
+
 	tests := []struct {
-		name           string
-		sections       []section.Section
-		currentSection string
-		wantContains   []string
-		wantNotContain []string
+		name              string
+		sections          []section.Section
+		sectionsErr       error
+		currentSection    section.Section
+		resolveForFileErr error
+		hrefErr           error
+		wantOutput        string
+		wantErrSubstr     string
 	}{
 		{
-			name:           "from root with no sections",
-			sections:       []section.Section{{DirName: "", DisplayName: "Accueil"}},
-			currentSection: "",
-			wantContains:   []string{`href="index.html"`, "Accueil", "<nav"},
+			name:       "renders empty nav when there are no sections",
+			sections:   []section.Section{},
+			wantOutput: `<nav class="not-prose flex flex-col sm:flex-row sm:items-baseline gap-4"></nav>`,
 		},
 		{
-			name: "from root with sections",
-			sections: []section.Section{
-				{DirName: "", DisplayName: "Accueil"},
-				{DirName: "posts", DisplayName: "Posts"},
-				{DirName: "about", DisplayName: "About"},
-			},
-			currentSection: "",
-			wantContains: []string{
-				`href="index.html"`,
-				`href="posts/index.html"`,
-				`href="about/index.html"`,
-				"Accueil",
-				"Posts",
-				"About",
-			},
+			name:           "renders each section with the current one focused",
+			sections:       []section.Section{sectionA, sectionB},
+			currentSection: sectionB,
+			wantOutput: fmt.Sprintf(
+				`<nav class="not-prose flex flex-col sm:flex-row sm:items-baseline gap-4">%s%s</nav>`,
+				navAnchor(hrefA, sectionA.DisplayName, false),
+				navAnchor(hrefB, sectionB.DisplayName, true),
+			),
 		},
 		{
-			name: "from section with sections",
-			sections: []section.Section{
-				{DirName: "", DisplayName: "Accueil"},
-				{DirName: "posts", DisplayName: "Posts"},
-				{DirName: "about", DisplayName: "About"},
-			},
-			currentSection: "posts",
-			wantContains: []string{
-				`href="../index.html"`,
-				`href="../posts/index.html"`,
-				`href="../about/index.html"`,
-				"Accueil",
-				"Posts",
-				"About",
-			},
-			wantNotContain: []string{
-				`href="index.html"`,
-			},
+			name:           "focuses nothing when the current section is not in the list",
+			sections:       []section.Section{sectionA, sectionB},
+			currentSection: notPresentSection,
+			wantOutput: fmt.Sprintf(
+				`<nav class="not-prose flex flex-col sm:flex-row sm:items-baseline gap-4">%s%s</nav>`,
+				navAnchor(hrefA, sectionA.DisplayName, false),
+				navAnchor(hrefB, sectionB.DisplayName, false),
+			),
 		},
 		{
-			name: "from about section",
-			sections: []section.Section{
-				{DirName: "", DisplayName: "Accueil"},
-				{DirName: "posts", DisplayName: "Posts"},
-				{DirName: "about", DisplayName: "About"},
-			},
-			currentSection: "about",
-			wantContains: []string{
-				`href="../index.html"`,
-				`href="../posts/index.html"`,
-				`href="../about/index.html"`,
-			},
+			name:          "wraps the error when the sections resolver fails",
+			sectionsErr:   errors.New(uuid.New().String()),
+			wantErrSubstr: "Resolve err",
 		},
 		{
-			name: "from nested section",
-			sections: []section.Section{
-				{DirName: "", DisplayName: "Accueil"},
-				{DirName: "posts", DisplayName: "Posts"},
-			},
-			currentSection: "blog/2024",
-			wantContains: []string{
-				`href="../../index.html"`,
-				`href="../../posts/index.html"`,
-			},
+			name:              "wraps the error when resolving the current section fails",
+			sections:          []section.Section{sectionA},
+			resolveForFileErr: errors.New(uuid.New().String()),
+			wantErrSubstr:     "ResolveForFile",
 		},
 		{
-			name: "home display name comes from root index.md title",
-			sections: []section.Section{
-				{DirName: "", DisplayName: "Bienvenue sur mon blog"},
-				{DirName: "posts", DisplayName: "All Articles"},
-			},
-			currentSection: "",
-			wantContains: []string{
-				`href="index.html"`,
-				"Bienvenue sur mon blog",
-				`href="posts/index.html"`,
-				"All Articles",
-			},
+			name:           "wraps the error when resolving a section href fails",
+			sections:       []section.Section{sectionA},
+			currentSection: sectionA,
+			hrefErr:        errors.New(uuid.New().String()),
+			wantErrSubstr:  "GetHRef err",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := NewSubstituer(tt.sections, tt.currentSection)
-			got, err := s.Resolve("")
-			if err != nil {
-				t.Fatalf("Resolve() unexpected error: %v", err)
-			}
-			for _, substr := range tt.wantContains {
-				if !strings.Contains(got, substr) {
-					t.Errorf("Resolve() should contain %q, got:\n%s", substr, got)
-				}
-			}
-			for _, substr := range tt.wantNotContain {
-				if strings.Contains(got, substr) {
-					t.Errorf("Resolve() should not contain %q, got:\n%s", substr, got)
-				}
-			}
-		})
-	}
-}
-
-func TestRelativePrefix(t *testing.T) {
-	tests := []struct {
-		section string
-		want    string
-	}{
-		{"", ""},
-		{"posts", "../"},
-		{"about", "../"},
-		{"blog/2024", "../../"},
-		{"a/b/c", "../../../"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.section, func(t *testing.T) {
-			if got := relativePrefix(tt.section); got != tt.want {
-				t.Errorf("relativePrefix(%q) = %q, want %q", tt.section, got, tt.want)
-			}
-		})
-	}
-}
-
-func TestSubstituer_Resolve_DisplayNameFromSection(t *testing.T) {
-	s := NewSubstituer([]section.Section{
-		{DirName: "", DisplayName: "Accueil"},
-		{DirName: "posts", DisplayName: "My Blog Posts"},
-	}, "")
-	got, err := s.Resolve("")
-	if err != nil {
-		t.Fatalf("Resolve() unexpected error: %v", err)
-	}
-	if !strings.Contains(got, "My Blog Posts") {
-		t.Errorf("display name should come from Section.DisplayName, got:\n%s", got)
-	}
-	if !strings.Contains(got, `href="posts/index.html"`) {
-		t.Errorf("href should use Section.DirName, got:\n%s", got)
-	}
-}
-
-func TestSubstituer_Resolve_ActiveSection(t *testing.T) {
-	sections := []section.Section{
-		{DirName: "", DisplayName: "Accueil"},
-		{DirName: "posts", DisplayName: "Posts"},
-		{DirName: "about", DisplayName: "About"},
-	}
-
-	tests := []struct {
-		name           string
-		currentSection string
-		activeDirName  string
-	}{
-		{"home is active", "", ""},
-		{"posts is active", "posts", "posts"},
-		{"about is active", "about", "about"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			s := NewSubstituer(sections, tt.currentSection)
-			got, err := s.Resolve("")
-			if err != nil {
-				t.Fatalf("Resolve() unexpected error: %v", err)
-			}
-			for _, sec := range sections {
-				if sec.DirName == tt.activeDirName {
-					if !strings.Contains(got, `class="font-semibold underline">`+sec.DisplayName) {
-						t.Errorf("active section %q should have font-semibold class, got:\n%s", sec.DisplayName, got)
+			// setup
+			pathResolver := &mockPathResolver{
+				ResolveFunc: func(oldPath, _ string) (string, error) {
+					if tt.hrefErr != nil {
+						return "", tt.hrefErr
 					}
-				} else {
-					if strings.Contains(got, `class="font-semibold underline">`+sec.DisplayName) {
-						t.Errorf("inactive section %q should not have font-semibold class, got:\n%s", sec.DisplayName, got)
-					}
-				}
+					return hrefs[oldPath], nil
+				},
 			}
+			sectionsResolver := &mockSectionResolver{
+				ResolveFunc: func() ([]section.Section, error) {
+					return tt.sections, tt.sectionsErr
+				},
+				ResolveForFileFunc: func(string) (section.Section, error) {
+					return tt.currentSection, tt.resolveForFileErr
+				},
+			}
+			substituter := NewSubstituer(pathResolver, sectionsResolver, "", "")
+
+			// test
+			result, err := substituter.Resolve("")
+
+			// expect
+			if tt.wantErrSubstr != "" {
+				assert.ErrorContains(t, err, tt.wantErrSubstr)
+				return
+			}
+			assert.NoError(t, err)
+			assert.Equal(t, tt.wantOutput, result)
 		})
 	}
 }

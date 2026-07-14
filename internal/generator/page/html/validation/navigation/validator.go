@@ -5,24 +5,27 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/tjnvr/blog/internal/generator/section"
+	"github.com/tjnvr/blog/internal/generator/backbone/section"
+	"github.com/tjnvr/blog/internal/relpath"
 )
 
 // Validator checks that the generated HTML contains a <nav> element
 // with links to all expected sections
 type Validator struct {
-	sections      []section.Section
-	navRegex      *regexp.Regexp
-	homeHrefRegex *regexp.Regexp
+	sectionResolver section.Resolver
+	pathResolver    relpath.Resolver
+	navRegex        *regexp.Regexp
 }
 
-// NewValidator creates a new navigation validator that will check
-// for the presence of nav links to all given sections plus the home page
-func NewValidator(sections []section.Section) *Validator {
+// NewValidator creates a new navigation validator that will check for the
+// presence of nav links to all sections known to sectionResolver. pathResolver
+// must resolve a section's markdown HomePath into the same href nav.Substituter
+// would generate, so the expected and generated hrefs stay in sync.
+func NewValidator(sectionResolver section.Resolver, pathResolver relpath.Resolver) *Validator {
 	return &Validator{
-		sections:      sections,
-		navRegex:      regexp.MustCompile(`(?s)<nav[^>]*>(.*?)</nav>`),
-		homeHrefRegex: regexp.MustCompile(`href="(\.\./)*index\.html"`),
+		sectionResolver: sectionResolver,
+		pathResolver:    pathResolver,
+		navRegex:        regexp.MustCompile(`(?s)<nav[^>]*>(.*?)</nav>`),
 	}
 }
 
@@ -40,23 +43,24 @@ func (v *Validator) Validate(htmlPath, buildDir string, content []byte) []error 
 
 	navContent := navMatch[1]
 
-	for _, s := range v.sections {
-		if s.DirName == "" {
-			// Home section: href may be prefixed with ../ depending on depth
-			if !strings.Contains(navContent, s.DisplayName) {
-				errs = append(errs, fmt.Errorf("%s: navigation missing home link (%s)", htmlPath, s.DisplayName))
-			}
-			if !v.homeHrefRegex.MatchString(navContent) {
-				errs = append(errs, fmt.Errorf("%s: navigation missing home href to index.html", htmlPath))
-			}
-		} else {
-			expectedHref := s.DirName + "/index.html"
-			if !strings.Contains(navContent, expectedHref) {
-				errs = append(errs, fmt.Errorf("%s: navigation missing link to section %q (expected href containing %q)", htmlPath, s.DirName, expectedHref))
-			}
-			if !strings.Contains(navContent, s.DisplayName) {
-				errs = append(errs, fmt.Errorf("%s: navigation missing display name %q for section %q", htmlPath, s.DisplayName, s.DirName))
-			}
+	sections, err := v.sectionResolver.Resolve()
+	if err != nil {
+		errs = append(errs, fmt.Errorf("sectionResolver.Resolve err: %v", err))
+		return errs
+	}
+
+	for _, s := range sections {
+		expectedHref, err := v.pathResolver.Resolve(s.HomePath, htmlPath)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("%s: cannot resolve expected href for section %q: %v", htmlPath, s.HomePath, err))
+			continue
+		}
+
+		if !strings.Contains(navContent, fmt.Sprintf(`href="%s"`, expectedHref)) {
+			errs = append(errs, fmt.Errorf("%s: navigation missing link to section %q (expected href %q)", htmlPath, s.HomePath, expectedHref))
+		}
+		if !strings.Contains(navContent, s.DisplayName) {
+			errs = append(errs, fmt.Errorf("%s: navigation missing display name %q for section %q", htmlPath, s.DisplayName, s.HomePath))
 		}
 	}
 

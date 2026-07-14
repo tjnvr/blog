@@ -1,0 +1,11 @@
+{{- define "node" -}}
+<a href="{{.HRef}}" class="nav-link font-semibold{{ if .IsFocused }} is-active{{ end }}">{{.Text}}</a>
+{{- end -}}
+
+{{- define "toc" -}}
+<nav class="not-prose flex flex-col sm:flex-row sm:items-baseline gap-4">
+    {{- range . -}}
+    {{- template "node" . -}}
+    {{- end -}}
+</nav>
+{{- end -}}

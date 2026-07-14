@@ -5,19 +5,19 @@ import (
 	"regexp"
 )
 
-// Substituter resolves {{title}} placeholder
-type Substituter struct {
+// substituter resolves {{title}} placeholder
+type substituter struct {
 }
 
-func NewSubstituer() Substituter {
-	return Substituter{}
+func NewSubstituer() substituter {
+	return substituter{}
 }
 
-func (t Substituter) Placeholder() string {
+func (t substituter) Placeholder() string {
 	return "{{title}}"
 }
 
-func (t Substituter) Resolve(content string) (string, error) {
+func (t substituter) Resolve(content string) (string, error) {
 	// Look for <h1> tag in HTML content, skipping any anchor link inside
 	re := regexp.MustCompile(`<h1[^>]*>([^<]+)(?:<a[^>]*>[^<]*</a>)?</h1>`)
 	match := re.FindSubmatch([]byte(content))

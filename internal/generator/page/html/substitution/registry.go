@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/tjnvr/blog/internal/generator/backbone/section"
 	"github.com/tjnvr/blog/internal/generator/page/html/substitution/content"
 	"github.com/tjnvr/blog/internal/generator/page/html/substitution/navigation"
 	"github.com/tjnvr/blog/internal/generator/page/html/substitution/summary"
 	"github.com/tjnvr/blog/internal/generator/page/html/substitution/title"
-	"github.com/tjnvr/blog/internal/generator/section"
+	"github.com/tjnvr/blog/internal/relpath"
 )
 
 // Registry manages substitutions and applies them to templates
@@ -17,12 +18,12 @@ type Registry struct {
 }
 
 // NewRegistry creates a new substitution registry with default substituters
-func NewRegistry(filePath, markdownSourcePath string, assetsPathTranslater, markdownPathTranslater content.PathTranslater, sections []section.Section, currentSection string) *Registry {
+func NewRegistry(HTMLPath, markdownSourcePath string, sectionResolver section.Resolver, pagesPathResolver, assetsPathResolver relpath.Resolver) *Registry {
 	return NewRegistryWithSubstituters(
-		content.NewSubstituer(filePath, markdownSourcePath, assetsPathTranslater, markdownPathTranslater),
+		content.NewSubstituer(HTMLPath, markdownSourcePath, assetsPathResolver, pagesPathResolver),
 		summary.NewSubstituer(),
 		title.NewSubstituer(),
-		navigation.NewSubstituer(sections, currentSection),
+		navigation.NewSubstituer(pagesPathResolver, sectionResolver, markdownSourcePath, HTMLPath),
 	)
 }
 

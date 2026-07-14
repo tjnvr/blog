@@ -5,7 +5,7 @@ go 1.25.3
 require (
 	github.com/dop251/goja v0.0.0-20260305124333-6a7976c22267
 	github.com/stretchr/testify v1.11.1
-	github.com/yuin/goldmark v1.7.16
+	github.com/yuin/goldmark v1.7.17
 )
 
 require (
