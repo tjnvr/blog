@@ -35,22 +35,22 @@ type (
 	}
 )
 
-// Substituter resolves the {{summary}} placeholder with a generated table of contents.
-type Substituter struct {
+// substituter resolves the {{summary}} placeholder with a generated table of contents.
+type substituter struct {
 	template *template.Template
 }
 
-func NewSubstituer() Substituter {
-	return Substituter{
+func NewSubstituer() substituter {
+	return substituter{
 		template: template.Must(template.New("summary").Parse(summaryTemplate)),
 	}
 }
 
-func (s Substituter) Placeholder() string {
+func (s substituter) Placeholder() string {
 	return "<p>{{summary}}</p>"
 }
 
-func (s Substituter) Resolve(content string) (string, error) {
+func (s substituter) Resolve(content string) (string, error) {
 	headings := listHeadings(content)
 	if len(headings) == 0 {
 		return "", nil

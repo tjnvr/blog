@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/afero"
-	"github.com/tjnvr/blog/internal/generator/section"
+	"github.com/tjnvr/blog/internal/generator/backbone/section"
 	mfs "github.com/tjnvr/blog/internal/io/fs"
 	"github.com/tjnvr/blog/internal/relpath"
 )
@@ -16,7 +16,7 @@ type (
 		Validate() error
 	}
 
-	pageGeneratorFactory func(fs afero.Fs, sourceMDPath, destinationHTMLPath, buildDir, pageSection string, assetsPathTranslater, linksPathTranslater relpath.Resolver, sections []section.Section, skipURLValidation bool) PageGenerator
+	pageGeneratorFactory func(fs afero.Fs, sourceMDPath, destinationHTMLPath, buildDir string, sectionResolver section.Resolver, pagePathsResolver, assetPathsResolver relpath.Resolver, skipURLValidation bool) PageGenerator
 
 	Option func(*Generator)
 )
@@ -36,8 +36,11 @@ type Generator struct {
 	Config
 	skipURLValidation    bool
 	dirCopier            mfs.DirCopier
+	pagesFinder          mfs.FilesFinder
+	sectionResolver      section.Resolver
+	pagePathsResolver    relpath.Resolver
+	assetPathsResolver   relpath.Resolver
 	pageGeneratorFactory pageGeneratorFactory
-	sections             []section.Section
 	pagesGenerators      []PageGenerator
 	fs                   afero.Fs
 }
@@ -69,9 +72,12 @@ func NewGenerator(fs afero.Fs, cfg Config, opts ...Option) (*Generator, error) {
 
 	g := &Generator{
 		Config:               cfg,
-		sections:             make([]section.Section, 0),
 		pagesGenerators:      make([]PageGenerator, 0),
 		dirCopier:            mfs.NewDirCopier(fs),
+		pagesFinder:          mfs.NewFilesFinder(fs, mfs.WithExtension(".md")),
+		sectionResolver:      section.NewResolver(fs, cfg.ContentDir),
+		pagePathsResolver:    relpath.NewResolver(cfg.ContentDir, cfg.BuildDir, relpath.WithExtension(".html")),
+		assetPathsResolver:   relpath.NewResolver(cfg.AssetsDir, cfg.AssetsOutDir),
 		pageGeneratorFactory: defaultPageGeneratorFactory,
 		fs:                   fs,
 	}
@@ -84,13 +90,6 @@ func NewGenerator(fs afero.Fs, cfg Config, opts ...Option) (*Generator, error) {
 }
 
 func (g *Generator) Generate() error {
-	assetsPathTranslater := relpath.NewResolver(g.AssetsDir, g.AssetsOutDir)
-	linksPathTranslater := relpath.NewResolver(g.ContentDir, g.BuildDir)
-
-	if err := g.listSections(); err != nil {
-		return fmt.Errorf("failed to list site sections: %w", err)
-	}
-
 	if err := g.dirCopier.CopyDir(mfs.NewFilesFinder(g.fs), g.AssetsDir, g.AssetsOutDir); err != nil {
 		return fmt.Errorf("CopyDir assets err: %v", err)
 	}
@@ -100,7 +99,7 @@ func (g *Generator) Generate() error {
 		return fmt.Errorf("CopyDir scripts err: %v", err)
 	}
 
-	if err := g.generatePages(assetsPathTranslater, linksPathTranslater); err != nil {
+	if err := g.generatePages(g.assetPathsResolver, g.pagePathsResolver); err != nil {
 		return fmt.Errorf("failed to generate pages: %w", err)
 	}
 

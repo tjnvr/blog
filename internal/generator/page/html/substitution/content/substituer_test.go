@@ -60,10 +60,10 @@ func TestSubstituter_Resolve(t *testing.T) {
 			html := `<a href="link.md">Link</a> <img src="img.png">`
 
 			// setup
-			s := Substituter{
-				markdownSourcePath:    "index.md",
-				linksPathTranslater:   mockPathTranslater{resolveFn: tt.linkFn},
-				assetsPathsTranslater: mockPathTranslater{resolveFn: tt.assetFn},
+			s := substituter{
+				markdownPath:       "index.md",
+				pagePathsResolver:  mockPathTranslater{resolveFn: tt.linkFn},
+				assetPathsResolver: mockPathTranslater{resolveFn: tt.assetFn},
 			}
 
 			// test
@@ -166,7 +166,7 @@ func TestSubstituter_ReplacePaths(t *testing.T) {
 			targetFile := uuid.New().String()
 
 			// setup
-			s := Substituter{markdownSourcePath: "docs/index.md"}
+			s := substituter{markdownPath: "docs/index.md"}
 			mock := mockPathTranslater{resolveFn: tt.resolveFn}
 
 			// test
@@ -205,9 +205,9 @@ func TestSubstituter_ConvertMdLinksPath(t *testing.T) {
 			targetFile := uuid.New().String()
 
 			// setup
-			s := Substituter{
-				markdownSourcePath: "index.md",
-				linksPathTranslater: mockPathTranslater{
+			s := substituter{
+				markdownPath: "index.md",
+				pagePathsResolver: mockPathTranslater{
 					resolveFn: func(oldPath, fromPath string) (string, error) {
 						return resLink, nil
 					},
@@ -245,9 +245,9 @@ func TestSubstituter_ConvertAssetsPath(t *testing.T) {
 			targetFile := uuid.New().String()
 
 			// setup
-			s := Substituter{
-				markdownSourcePath: "index.md",
-				assetsPathsTranslater: mockPathTranslater{
+			s := substituter{
+				markdownPath: "index.md",
+				assetPathsResolver: mockPathTranslater{
 					resolveFn: func(oldPath, fromPath string) (string, error) {
 						return resAsset, nil
 					},

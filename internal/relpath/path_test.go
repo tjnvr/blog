@@ -93,3 +93,45 @@ func TestResolve(t *testing.T) {
 		})
 	}
 }
+
+func TestResolve_WithExtension(t *testing.T) {
+	tests := []struct {
+		name     string
+		oldPath  string
+		fromPath string
+		want     string
+	}{
+		{
+			name:     "replaces a markdown source extension with the target extension",
+			oldPath:  "content/index.md",
+			fromPath: "target/index.html",
+			want:     "index.html",
+		},
+		{
+			name:     "replaces a nested source file extension with the target extension",
+			oldPath:  "content/posts/index.md",
+			fromPath: "target/index.html",
+			want:     "posts/index.html",
+		},
+		{
+			name:     "replaces an extension even when the source has none",
+			oldPath:  "content/README",
+			fromPath: "target/index.html",
+			want:     "README.html",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// given
+			resolver := NewResolver("content", "target", WithExtension(".html"))
+
+			// test
+			got, err := resolver.Resolve(tt.oldPath, tt.fromPath)
+
+			// expect
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}

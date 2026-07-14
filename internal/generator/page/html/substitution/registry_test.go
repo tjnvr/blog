@@ -5,7 +5,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tjnvr/blog/internal/generator/section"
+	"github.com/spf13/afero"
+
+	"github.com/tjnvr/blog/internal/generator/backbone/section"
+	"github.com/tjnvr/blog/internal/relpath"
 )
 
 // fakeSubstituter is a test double implementing Substituter
@@ -19,13 +22,18 @@ func (f fakeSubstituter) Resolve(content string) (string, error) {
 	return f.resolveFunc(content)
 }
 
+// testResolvers builds working section/path resolvers over an empty in-memory
+// "content" directory, so default substituters (e.g. nav) can resolve without
+// error against the "content/source.md" -> "build/output.html" paths used below.
+func testResolvers() (section.Resolver, relpath.Resolver) {
+	fs := afero.NewMemMapFs()
+	_ = afero.WriteFile(fs, "content/index.md", []byte("# Home"), 0644)
+	return section.NewResolver(fs, "content"), relpath.NewResolver("content", "build")
+}
+
 func TestNewRegistry(t *testing.T) {
-	sections := []section.Section{
-		{DirName: "", DisplayName: "Accueil"},
-		{DirName: "posts", DisplayName: "Posts"},
-		{DirName: "about", DisplayName: "About"},
-	}
-	r := NewRegistry("output.html", "source.md", nil, nil, sections, "")
+	sectionResolver, pathResolver := testResolvers()
+	r := NewRegistry("build/output.html", "content/source.md", sectionResolver, pathResolver, pathResolver)
 	if r == nil {
 		t.Fatal("NewRegistry() returned nil")
 		return
@@ -160,7 +168,8 @@ func TestRegistry_Apply(t *testing.T) {
 }
 
 func TestRegistry_Apply_WithDefaultSubstituters(t *testing.T) {
-	r := NewRegistry("output.html", "source.md", nil, nil, []section.Section{{DirName: "", DisplayName: "Accueil"}, {DirName: "posts", DisplayName: "Posts"}}, "")
+	sectionResolver, pathResolver := testResolvers()
+	r := NewRegistry("build/output.html", "content/source.md", sectionResolver, pathResolver, pathResolver)
 	template := `<title>{{title}}</title><div>{{navigation}}</div><body>{{content}}</body>`
 	content := `<h1>Test Title</h1><p>Hello world</p>`
 
@@ -181,7 +190,8 @@ func TestRegistry_Apply_WithDefaultSubstituters(t *testing.T) {
 }
 
 func TestRegistry_Apply_SummarySubstitution(t *testing.T) {
-	r := NewRegistry("output.html", "source.md", nil, nil, []section.Section{{DirName: "", DisplayName: "Accueil"}}, "")
+	sectionResolver, pathResolver := testResolvers()
+	r := NewRegistry("build/output.html", "content/source.md", sectionResolver, pathResolver, pathResolver)
 	template := `<body>{{content}}</body>`
 	content := `<h1 id="title">Title</h1>` +
 		`<p>{{summary}}</p>` +

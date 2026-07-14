@@ -12,16 +12,16 @@ import (
 )
 
 type Article struct {
-	name      string
-	filePath  string
-	createdAt string
+	name         string
+	markdownPath string
+	createdAt    string
 }
 
 func (a Article) Print() string {
 	if a.createdAt != "" {
-		return fmt.Sprintf("- [%s](%s) · *%s*", a.name, a.filePath, a.createdAt)
+		return fmt.Sprintf("- [%s](%s) · *%s*", a.name, a.markdownPath, a.createdAt)
 	}
-	return fmt.Sprintf("- [%s](%s)", a.name, a.filePath)
+	return fmt.Sprintf("- [%s](%s)", a.name, a.markdownPath)
 }
 
 type ListPageArticles struct {
@@ -44,12 +44,12 @@ func NewPageArticlesLister(fs afero.Fs, articlesHomeFilePath string) ListPageArt
 func (la ListPageArticles) ListPrinters() ([]Article, error) {
 	articles := make([]Article, 0)
 	dir := filepath.Dir(la.articlesHomeFilePath)
-	filePaths, err := la.articleFilePathsFinder.FindFiles(dir)
+	markdownPaths, err := la.articleFilePathsFinder.FindFiles(dir)
 	if err != nil {
 		return articles, fmt.Errorf("error on ListFilePaths: %s", err)
 	}
 
-	for _, relPath := range filePaths {
+	for _, relPath := range markdownPaths {
 		// only first-level .md files, excluding the index file itself
 		if relPath == filepath.Base(la.articlesHomeFilePath) {
 			continue
@@ -66,9 +66,9 @@ func (la ListPageArticles) ListPrinters() ([]Article, error) {
 		}
 
 		articles = append(articles, Article{
-			name:      name,
-			filePath:  relPath,
-			createdAt: metadata.Extract(data).CreationDate,
+			name:         name,
+			markdownPath: relPath,
+			createdAt:    metadata.Extract(data).CreationDate,
 		})
 	}
 

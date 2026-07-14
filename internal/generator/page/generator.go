@@ -21,7 +21,6 @@ type Generator struct {
 	buildDir              string
 	htmlContentBytes      []byte
 	destinationHTMLPath   string
-	sectionName           string
 	fs                    afero.Fs
 	markdownSubstitutions *mdsubstitution.Registry
 	HTMLSubstitutions     *htmlsubstitution.Registry
@@ -29,10 +28,9 @@ type Generator struct {
 }
 
 func NewGenerator(
-	markdownSourcePath string,
-	htmlOutputPath string,
+	markdownPath string,
+	HTMLPath string,
 	buildDir string,
-	sectionName string,
 	fs afero.Fs,
 	markdownSubstitutions *mdsubstitution.Registry,
 	HTMLSubstitutions *htmlsubstitution.Registry,
@@ -40,10 +38,9 @@ func NewGenerator(
 ) *Generator {
 	return &Generator{
 		htmlPageTemplate:      defaultTemplate,
-		sourceMDPath:          markdownSourcePath,
-		destinationHTMLPath:   htmlOutputPath,
+		sourceMDPath:          markdownPath,
+		destinationHTMLPath:   HTMLPath,
 		buildDir:              buildDir,
-		sectionName:           sectionName,
 		fs:                    fs,
 		markdownSubstitutions: markdownSubstitutions,
 		HTMLSubstitutions:     HTMLSubstitutions,

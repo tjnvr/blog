@@ -1,55 +1,86 @@
 package navigation
 
 import (
+	"bytes"
+	_ "embed"
 	"fmt"
-	"strings"
+	"html/template"
 
-	"github.com/tjnvr/blog/internal/generator/section"
+	"github.com/tjnvr/blog/internal/generator/backbone/section"
+	"github.com/tjnvr/blog/internal/relpath"
 )
 
-// Substituter resolves {{navigation}} placeholder with an auto-generated nav bar
-type Substituter struct {
-	sections       []section.Section
-	currentSection string
-}
+var (
+	// The HTML template used to render the summary
+	//
+	// https://pkg.go.dev/html/template
+	//go:embed template.html
+	navTemplate string
+)
 
-func NewSubstituer(sections []section.Section, currentSection string) Substituter {
-	return Substituter{
-		sections:       sections,
-		currentSection: currentSection,
+type (
+	// substituter resolves {{navigation}} placeholder with an auto-generated nav bar
+	substituter struct {
+		template         *template.Template
+		pathsResolver    relpath.Resolver
+		sectionsResolver section.Resolver
+		markdownPath     string
+		HTMLPath         string
+	}
+
+	navItem struct {
+		HRef      string
+		Text      string
+		IsFocused bool // To display differently currently activated section
+	}
+)
+
+func NewSubstituer(pathsResolver relpath.Resolver, sectionsResolver section.Resolver, markdownPath, HTMLPath string) substituter {
+	return substituter{
+		template:         template.Must(template.New("nav").Parse(navTemplate)),
+		pathsResolver:    pathsResolver,
+		sectionsResolver: sectionsResolver,
+		markdownPath:     markdownPath,
+		HTMLPath:         HTMLPath,
 	}
 }
 
-func (n Substituter) Placeholder() string {
+func (n substituter) Placeholder() string {
 	return "{{navigation}}"
 }
 
-func (n Substituter) Resolve(_ string) (string, error) {
-	prefix := relativePrefix(n.currentSection)
-
-	var links []string
-	for _, s := range n.sections {
-		var href string
-		if s.DirName == "" {
-			href = prefix + "index.html"
-		} else {
-			href = prefix + s.DirName + "/index.html"
-		}
-		class := "hover:underline"
-		if s.DirName == n.currentSection {
-			class = "font-semibold underline"
-		}
-		links = append(links, fmt.Sprintf(`<a href="%s" class="%s">%s</a>`, href, class, s.DisplayName))
+func (n substituter) Resolve(_ string) (string, error) {
+	sections, err := n.sectionsResolver.Resolve()
+	if err != nil {
+		return "", fmt.Errorf("Resolve err: %v", err)
 	}
 
-	return fmt.Sprintf(`<nav class="flex flex-col sm:flex-row gap-4">%s</nav>`, strings.Join(links, "\n    ")), nil
-}
-
-// relativePrefix returns the "../" prefix needed to reach the site root from the current section.
-func relativePrefix(currentSection string) string {
-	if currentSection == "" {
-		return ""
+	currentSection, err := n.sectionsResolver.ResolveForFile(n.markdownPath)
+	if err != nil {
+		return "", fmt.Errorf("ResolveForFile(%s) err: %v", n.markdownPath, err)
 	}
-	depth := strings.Count(currentSection, "/") + 1
-	return strings.Repeat("../", depth)
+	var navItems = make([]navItem, len(sections))
+	for i, s := range sections {
+		hRef, err := n.pathsResolver.Resolve(s.HomePath, n.HTMLPath)
+		if err != nil {
+			return "", fmt.Errorf("GetHRef err for '%s' from '%s', %v", s.HomePath, n.HTMLPath, err)
+		}
+		navItem := navItem{
+			HRef: hRef,
+			Text: s.DisplayName,
+		}
+
+		if s == currentSection {
+			navItem.IsFocused = true
+		}
+		navItems[i] = navItem
+	}
+
+	var buf bytes.Buffer
+	err = n.template.ExecuteTemplate(&buf, "toc", navItems)
+	if err != nil {
+		return "", fmt.Errorf("execute err: %v", err)
+	}
+
+	return buf.String(), nil
 }

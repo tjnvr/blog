@@ -3,11 +3,12 @@ package validation
 import (
 	"errors"
 
+	"github.com/tjnvr/blog/internal/generator/backbone/section"
 	"github.com/tjnvr/blog/internal/generator/page/html/validation/image"
 	"github.com/tjnvr/blog/internal/generator/page/html/validation/link"
 	"github.com/tjnvr/blog/internal/generator/page/html/validation/navigation"
 	"github.com/tjnvr/blog/internal/generator/page/html/validation/script"
-	"github.com/tjnvr/blog/internal/generator/section"
+	"github.com/tjnvr/blog/internal/relpath"
 )
 
 // Registry manages validators and runs them on HTML content
@@ -16,7 +17,7 @@ type Registry struct {
 }
 
 // NewRegistry creates a validation registry with the navigation validator configured for the given sections
-func NewRegistry(sections []section.Section, skipURLValidation bool) *Registry {
+func NewRegistry(sectionResolver section.Resolver, pathResolver relpath.Resolver, skipURLValidation bool) *Registry {
 	lv := link.NewValidator()
 	lv.SkipExternal = skipURLValidation
 	iv := image.NewValidator()
@@ -25,7 +26,7 @@ func NewRegistry(sections []section.Section, skipURLValidation bool) *Registry {
 		validators: []Validator{
 			lv,
 			iv,
-			navigation.NewValidator(sections),
+			navigation.NewValidator(sectionResolver, pathResolver),
 		},
 	}
 }
@@ -38,7 +39,7 @@ func NewRegistryWithValidators(validators ...Validator) *Registry {
 }
 
 // NewDefaultRegistry creates a validation registry with default validators (image, script, link, navigation)
-func NewDefaultRegistry(sections []section.Section, skipURLValidation bool) *Registry {
+func NewDefaultRegistry(sectionResolver section.Resolver, pathResolver relpath.Resolver, skipURLValidation bool) *Registry {
 	lv := link.NewValidator()
 	lv.SkipExternal = skipURLValidation
 	iv := image.NewValidator()
@@ -48,7 +49,7 @@ func NewDefaultRegistry(sections []section.Section, skipURLValidation bool) *Reg
 			iv,
 			script.NewValidator(),
 			lv,
-			navigation.NewValidator(sections),
+			navigation.NewValidator(sectionResolver, pathResolver),
 		},
 	}
 }

@@ -6,44 +6,41 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"github.com/tjnvr/blog/internal/relpath"
 )
 
 type (
-	PathTranslater interface {
-		Resolve(oldPath, fromPath string) (string, error)
-	}
-
-	Substituter struct {
-		filePath              string
-		markdownSourcePath    string
-		assetsPathsTranslater PathTranslater
-		linksPathTranslater   PathTranslater
+	substituter struct {
+		HTMLPath                              string
+		markdownPath                          string
+		pagePathsResolver, assetPathsResolver relpath.Resolver
 	}
 )
 
-func NewSubstituer(filePath, markdownSourcePath string, assetsPathsTranslater PathTranslater, linksPathTranslater PathTranslater) Substituter {
-	return Substituter{
-		filePath:              filePath,
-		markdownSourcePath:    markdownSourcePath,
-		assetsPathsTranslater: assetsPathsTranslater,
-		linksPathTranslater:   linksPathTranslater,
+func NewSubstituer(HTMLPath, markdownSourcePath string, assetPathsTranslater relpath.Resolver, pagePathsResolver relpath.Resolver) substituter {
+	return substituter{
+		HTMLPath:           HTMLPath,
+		markdownPath:       markdownSourcePath,
+		pagePathsResolver:  pagePathsResolver,
+		assetPathsResolver: assetPathsTranslater,
 	}
 }
 
-func (s Substituter) Placeholder() string {
+func (s substituter) Placeholder() string {
 	return "{{content}}"
 }
 
-func (s Substituter) Resolve(htmlContent string) (string, error) {
+func (s substituter) Resolve(htmlContent string) (string, error) {
 	var errs error
 	var err error
 
-	htmlContent, err = s.convertMdLinksPath(htmlContent, s.filePath)
+	htmlContent, err = s.convertMdLinksPath(htmlContent, s.HTMLPath)
 	if err != nil {
 		errs = errors.Join(errs, fmt.Errorf("s.convertMdLinksPath err: %w", err))
 	}
 
-	htmlContent, err = s.convertAssetsPath(htmlContent, s.filePath)
+	htmlContent, err = s.convertAssetsPath(htmlContent, s.HTMLPath)
 	if err != nil {
 		errs = errors.Join(errs, fmt.Errorf("s.convertAssetsPath err: %w", err))
 	}
@@ -51,7 +48,7 @@ func (s Substituter) Resolve(htmlContent string) (string, error) {
 	return htmlContent, errs
 }
 
-func (s Substituter) replacePaths(html, filePath string, re *regexp.Regexp, translater PathTranslater, modifyPath func(string) string) (string, error) {
+func (s substituter) replacePaths(html, HTMLPath string, re *regexp.Regexp, relpathResolver relpath.Resolver, modifyPath func(string) string) (string, error) {
 	var errs error
 
 	result := re.ReplaceAllStringFunc(html, func(match string) string {
@@ -69,12 +66,12 @@ func (s Substituter) replacePaths(html, filePath string, re *regexp.Regexp, tran
 		}
 
 		// Calculate fullOldPath from root directory
-		fullOldPath := filepath.Join(filepath.Dir(s.markdownSourcePath), src)
+		fullOldPath := filepath.Join(filepath.Dir(s.markdownPath), src)
 		if modifyPath != nil {
 			fullOldPath = modifyPath(fullOldPath)
 		}
 
-		newPath, err := translater.Resolve(fullOldPath, filePath)
+		newPath, err := relpathResolver.Resolve(fullOldPath, HTMLPath)
 		if err != nil {
 			errs = errors.Join(errs, err)
 			return match
@@ -86,14 +83,12 @@ func (s Substituter) replacePaths(html, filePath string, re *regexp.Regexp, tran
 	return result, errs
 }
 
-func (s Substituter) convertMdLinksPath(html string, filePath string) (string, error) {
+func (s substituter) convertMdLinksPath(html string, HTMLPath string) (string, error) {
 	re := regexp.MustCompile(`(href=")([^"]*\.md)(")`)
-	return s.replacePaths(html, filePath, re, s.linksPathTranslater, func(p string) string {
-		return strings.TrimSuffix(p, ".md") + ".html"
-	})
+	return s.replacePaths(html, HTMLPath, re, s.pagePathsResolver, nil)
 }
 
-func (s Substituter) convertAssetsPath(html string, filePath string) (string, error) {
+func (s substituter) convertAssetsPath(html string, HTMLPath string) (string, error) {
 	re := regexp.MustCompile(`(<img[^>]+src=")([^"]+)(")`)
-	return s.replacePaths(html, filePath, re, s.assetsPathsTranslater, nil)
+	return s.replacePaths(html, HTMLPath, re, s.assetPathsResolver, nil)
 }
