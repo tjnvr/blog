@@ -5,12 +5,13 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/tjnvr/blog/internal/generator/backbone/section"
+	"github.com/tjnvr/blog/internal/backbone/section"
 	"github.com/tjnvr/blog/internal/relpath"
 )
 
-// Validator checks that the generated HTML contains a <nav> element
-// with links to all expected sections
+// Validator checks that the generated HTML contains a <nav> element with links
+// to all expected sections, laid out in the order the section resolver returns
+// them.
 type Validator struct {
 	sectionResolver section.Resolver
 	pathResolver    relpath.Resolver
@@ -29,7 +30,8 @@ func NewValidator(sectionResolver section.Resolver, pathResolver relpath.Resolve
 	}
 }
 
-// Validate checks the HTML content for a <nav> element containing links to all sections
+// Validate checks the HTML content for a <nav> element containing links to all
+// sections, in section order.
 func (v *Validator) Validate(htmlPath, buildDir string, content []byte) []error {
 	var errs []error
 	html := string(content)
@@ -49,6 +51,12 @@ func (v *Validator) Validate(htmlPath, buildDir string, content []byte) []error 
 		return errs
 	}
 
+	// Sections are resolved in display order, so their links must appear in the
+	// same order within the <nav>. previousLink anchors the last link found in
+	// order, previousSection names it for the error message.
+	previousLink := -1
+	previousSection := ""
+
 	for _, s := range sections {
 		expectedHref, err := v.pathResolver.Resolve(s.HomePath, htmlPath)
 		if err != nil {
@@ -56,9 +64,16 @@ func (v *Validator) Validate(htmlPath, buildDir string, content []byte) []error 
 			continue
 		}
 
-		if !strings.Contains(navContent, fmt.Sprintf(`href="%s"`, expectedHref)) {
+		switch link := strings.Index(navContent, fmt.Sprintf(`href="%s"`, expectedHref)); {
+		case link < 0:
 			errs = append(errs, fmt.Errorf("%s: navigation missing link to section %q (expected href %q)", htmlPath, s.HomePath, expectedHref))
+		case link < previousLink:
+			errs = append(errs, fmt.Errorf("%s: navigation link to section %q is out of order (expected after section %q)", htmlPath, s.HomePath, previousSection))
+		default:
+			previousLink = link
+			previousSection = s.HomePath
 		}
+
 		if !strings.Contains(navContent, s.DisplayName) {
 			errs = append(errs, fmt.Errorf("%s: navigation missing display name %q for section %q", htmlPath, s.DisplayName, s.HomePath))
 		}

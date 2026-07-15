@@ -7,7 +7,7 @@ import (
 
 	"github.com/spf13/afero"
 
-	"github.com/tjnvr/blog/internal/generator/backbone/section"
+	"github.com/tjnvr/blog/internal/backbone/section"
 	"github.com/tjnvr/blog/internal/relpath"
 )
 
@@ -45,7 +45,7 @@ func TestNewRegistry(t *testing.T) {
 
 func TestNewRegistryWithSubstituters(t *testing.T) {
 	t.Run("empty registry", func(t *testing.T) {
-		r := NewRegistryWithSubstituters()
+		r := newRegistryWithSubstituters()
 		if r == nil {
 			t.Fatal("NewRegistryWithSubstituters() returned nil")
 			return
@@ -58,7 +58,7 @@ func TestNewRegistryWithSubstituters(t *testing.T) {
 	t.Run("custom substituters", func(t *testing.T) {
 		s1 := fakeSubstituter{placeholder: "{{a}}", resolveFunc: func(string) (string, error) { return "A", nil }}
 		s2 := fakeSubstituter{placeholder: "{{b}}", resolveFunc: func(string) (string, error) { return "B", nil }}
-		r := NewRegistryWithSubstituters(s1, s2)
+		r := newRegistryWithSubstituters(s1, s2)
 		if len(r.substitutions) != 2 {
 			t.Errorf("expected 2 substituters, got %d", len(r.substitutions))
 		}
@@ -149,7 +149,7 @@ func TestRegistry_Apply(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := NewRegistryWithSubstituters(tt.subs...)
+			r := newRegistryWithSubstituters(tt.subs...)
 			got, err := r.Apply(tt.template, tt.content)
 			if tt.wantErr {
 				if err == nil {

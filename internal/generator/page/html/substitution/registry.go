@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/tjnvr/blog/internal/generator/backbone/section"
+	"github.com/tjnvr/blog/internal/backbone/section"
 	"github.com/tjnvr/blog/internal/generator/page/html/substitution/content"
 	"github.com/tjnvr/blog/internal/generator/page/html/substitution/navigation"
 	"github.com/tjnvr/blog/internal/generator/page/html/substitution/summary"
@@ -19,7 +19,7 @@ type Registry struct {
 
 // NewRegistry creates a new substitution registry with default substituters
 func NewRegistry(HTMLPath, markdownSourcePath string, sectionResolver section.Resolver, pagesPathResolver, assetsPathResolver relpath.Resolver) *Registry {
-	return NewRegistryWithSubstituters(
+	return newRegistryWithSubstituters(
 		content.NewSubstituer(HTMLPath, markdownSourcePath, assetsPathResolver, pagesPathResolver),
 		summary.NewSubstituer(),
 		title.NewSubstituer(),
@@ -27,8 +27,8 @@ func NewRegistry(HTMLPath, markdownSourcePath string, sectionResolver section.Re
 	)
 }
 
-// NewRegistryWithSubstituters creates a registry with custom substituters
-func NewRegistryWithSubstituters(subs ...Substituer) *Registry {
+// newRegistryWithSubstituters creates a registry with custom substituters
+func newRegistryWithSubstituters(subs ...Substituer) *Registry {
 	return &Registry{
 		substitutions: subs,
 	}

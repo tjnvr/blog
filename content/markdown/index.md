@@ -1,3 +1,4 @@
+<!-- seq: 1 -->
 # Accueil
 
 Ceci est mon site personnel où je partage mes réflexions.

@@ -3,7 +3,7 @@ package validation
 import (
 	"errors"
 
-	"github.com/tjnvr/blog/internal/generator/backbone/section"
+	"github.com/tjnvr/blog/internal/backbone/section"
 	"github.com/tjnvr/blog/internal/generator/page/html/validation/image"
 	"github.com/tjnvr/blog/internal/generator/page/html/validation/link"
 	"github.com/tjnvr/blog/internal/generator/page/html/validation/navigation"

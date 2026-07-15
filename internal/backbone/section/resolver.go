@@ -1,11 +1,15 @@
 package section
 
 import (
+	"cmp"
 	"fmt"
+	"math"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/spf13/afero"
+	"github.com/tjnvr/blog/internal/backbone/metadata"
 	mfs "github.com/tjnvr/blog/internal/io/fs"
 )
 
@@ -19,7 +23,8 @@ type (
 	// Resolver discovers site sections within a content directory.
 	Resolver interface {
 		// Resolve returns one Section for every index.md found under the
-		// content directory, including the root section.
+		// content directory, including the root section, ordered by ascending
+		// Seq. Unsequenced sections come last, ordered by display name.
 		Resolve() ([]Section, error)
 		// ResolveForFile returns the Section that owns the Markdown file at
 		// markdownPath, determined by its first-level directory under the
@@ -45,13 +50,14 @@ func (r *sectionResolver) Resolve() ([]Section, error) {
 		return nil, fmt.Errorf("FindFiles err: %v", err)
 	}
 	for _, relHomeSectionFile := range homeSectionFiles {
-		homeSectionFile := filepath.Join(r.contentDirectory, relHomeSectionFile)
-		title, err := extractSectionTitle(r.fs, homeSectionFile)
+		s, err := extractSection(r.fs, filepath.Join(r.contentDirectory, relHomeSectionFile))
 		if err != nil {
 			return nil, err
 		}
-		sections = append(sections, Section{HomePath: homeSectionFile, DisplayName: title})
+		sections = append(sections, s)
 	}
+
+	slices.SortFunc(sections, compareSections)
 
 	return sections, nil
 }
@@ -73,21 +79,31 @@ func (r *sectionResolver) ResolveForFile(markdownPath string) (Section, error) {
 		sectionDirectory = directories[0]
 	}
 
-	homeSectionFile := filepath.Join(r.contentDirectory, sectionDirectory, "index.md")
-	sectionTitle, err := extractSectionTitle(r.fs, homeSectionFile)
+	return extractSection(r.fs, filepath.Join(r.contentDirectory, sectionDirectory, "index.md"))
+}
+
+// extractSection builds the Section described by homeSectionFile. Both Resolve
+// and ResolveForFile go through it so that every field, Seq included, is filled
+// the same way: callers compare the two results for equality.
+func extractSection(fs afero.Fs, homeSectionFile string) (Section, error) {
+	content, err := afero.ReadFile(fs, homeSectionFile)
+	if err != nil {
+		return Section{}, fmt.Errorf("afero.ReadFile err:%v", err)
+	}
+
+	title, err := extractSectionTitle(content)
 	if err != nil {
 		return Section{}, err
 	}
 
-	return Section{HomePath: homeSectionFile, DisplayName: sectionTitle}, nil
+	return Section{
+		HomePath:    homeSectionFile,
+		DisplayName: title,
+		Seq:         metadata.Extract(content).Seq,
+	}, nil
 }
 
-func extractSectionTitle(fs afero.Fs, homeSectionFile string) (string, error) {
-	content, err := afero.ReadFile(fs, homeSectionFile)
-	if err != nil {
-		return "", fmt.Errorf("afero.ReadFile err:%v", err)
-	}
-
+func extractSectionTitle(content []byte) (string, error) {
 	for line := range strings.SplitSeq(string(content), "\n") {
 		if after, ok := strings.CutPrefix(line, "# "); ok {
 			return strings.TrimSpace(after), nil
@@ -95,4 +111,20 @@ func extractSectionTitle(fs afero.Fs, homeSectionFile string) (string, error) {
 	}
 
 	return "", fmt.Errorf("no section title found")
+}
+
+// compareSections orders sections by ascending Seq, then by display name.
+func compareSections(a, b Section) int {
+	return cmp.Or(
+		cmp.Compare(sequence(a), sequence(b)),
+		cmp.Compare(a.DisplayName, b.DisplayName),
+	)
+}
+
+// sequence reports the sort rank of s. Unsequenced sections rank last.
+func sequence(s Section) int {
+	if s.Seq == 0 {
+		return math.MaxInt
+	}
+	return s.Seq
 }
