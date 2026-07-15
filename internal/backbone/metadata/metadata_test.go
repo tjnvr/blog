@@ -37,6 +37,21 @@ func TestMetadata_Extract(t *testing.T) {
 			data: "<!--   creation-date:   2026-01-24   -->\n# Hello",
 			want: Metadata{CreationDate: "2026-01-24"},
 		},
+		{
+			name: "seq",
+			data: "<!-- seq: 2 -->\n# Hello",
+			want: Metadata{Seq: 2},
+		},
+		{
+			name: "seq alongside creation-date",
+			data: "<!-- seq: 3 -->\n<!-- creation-date: 2026-01-24 -->\n# Hello",
+			want: Metadata{CreationDate: "2026-01-24", Seq: 3},
+		},
+		{
+			name: "non numeric seq is ignored",
+			data: "<!-- seq: first -->\n# Hello",
+			want: Metadata{},
+		},
 	}
 
 	for _, tt := range tests {

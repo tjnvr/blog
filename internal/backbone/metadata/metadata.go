@@ -2,10 +2,12 @@ package metadata
 
 import (
 	"regexp"
+	"strconv"
 )
 
 type Metadata struct {
 	CreationDate string
+	Seq          int // Display order. 0 means unsequenced.
 }
 
 var metadataRegexp = regexp.MustCompile(`<!--\s*(\S+):\s*(.+?)\s*-->`)
@@ -18,6 +20,10 @@ func Extract(data []byte) Metadata {
 		switch key {
 		case "creation-date":
 			m.CreationDate = value
+		case "seq":
+			if seq, err := strconv.Atoi(value); err == nil {
+				m.Seq = seq
+			}
 		}
 	}
 	return m
