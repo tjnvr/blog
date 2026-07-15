@@ -51,8 +51,8 @@ func defaultPageGeneratorFactory(fs afero.Fs, sourceMDPath, destinationHTMLPath,
 	var (
 		markdownSubstitutions = mdsubstitutions.NewRegistry(sourceMDPath)
 		HTMLSubstitutions     = htmlsubstitutions.NewRegistry(destinationHTMLPath, sourceMDPath, sectionResolver, pagePathsResolver, assetPathsResolver)
-		validations           = validation.NewRegistry(sectionResolver, pagePathsResolver, skipURLValidation)
+		validations           = validation.NewRegistry(destinationHTMLPath, buildDir, fs, sectionResolver, pagePathsResolver, skipURLValidation)
 	)
 
-	return page.NewGenerator(sourceMDPath, destinationHTMLPath, buildDir, fs, markdownSubstitutions, HTMLSubstitutions, validations)
+	return page.NewGenerator(sourceMDPath, destinationHTMLPath, fs, markdownSubstitutions, HTMLSubstitutions, validations)
 }

@@ -18,7 +18,6 @@ var defaultTemplate string
 type Generator struct {
 	htmlPageTemplate      string
 	sourceMDPath          string
-	buildDir              string
 	htmlContentBytes      []byte
 	destinationHTMLPath   string
 	fs                    afero.Fs
@@ -30,7 +29,6 @@ type Generator struct {
 func NewGenerator(
 	markdownPath string,
 	HTMLPath string,
-	buildDir string,
 	fs afero.Fs,
 	markdownSubstitutions *mdsubstitution.Registry,
 	HTMLSubstitutions *htmlsubstitution.Registry,
@@ -40,7 +38,6 @@ func NewGenerator(
 		htmlPageTemplate:      defaultTemplate,
 		sourceMDPath:          markdownPath,
 		destinationHTMLPath:   HTMLPath,
-		buildDir:              buildDir,
 		fs:                    fs,
 		markdownSubstitutions: markdownSubstitutions,
 		HTMLSubstitutions:     HTMLSubstitutions,
@@ -92,5 +89,5 @@ func (g *Generator) Generate() error {
 // Validate triggers structural validation checks on the generated HTML content.
 // Note: This must be called after a successful invocation of Generate().
 func (g *Generator) Validate() error {
-	return g.validations.Validate(g.destinationHTMLPath, g.buildDir, g.htmlContentBytes)
+	return g.validations.Validate(g.htmlContentBytes)
 }

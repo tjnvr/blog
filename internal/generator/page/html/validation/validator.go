@@ -1,29 +1,12 @@
 package validation
 
-import "fmt"
-
-// Error represents a validation failure
-type Error struct {
-	File    string
-	Message string
-}
-
-func (e Error) Error() string {
-	return e.File + ": " + e.Message
-}
-
-// NewError creates a new validation error
-func NewError(file, format string, args ...any) Error {
-	return Error{
-		File:    file,
-		Message: fmt.Sprintf(format, args...),
-	}
-}
-
-// Validator validates generated HTML content
+// Validator validates generated HTML content.
+//
+// The page path, the build output root and the filesystem are injected when the
+// validator is constructed (see NewRegistry), so Validate receives only the
+// generated content of the page being checked.
 type Validator interface {
-	// Validate checks the HTML content and returns any validation errors
-	// htmlPath is the path to the generated HTML file
-	// buildDir is the root build directory for resolving relative paths
-	Validate(htmlPath, buildDir string, content []byte) []error
+	// Validate checks content and returns one error per validation failure, or
+	// an empty slice when the content is valid.
+	Validate(content []byte) []error
 }
