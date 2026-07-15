@@ -25,7 +25,7 @@ func (f fakeSectionResolver) ResolveForFile(string) (section.Section, error) {
 
 func TestNewValidator_ShouldCreateValidValidator(t *testing.T) {
 	// setup
-	v := NewValidator(fakeSectionResolver{}, relpath.NewResolver("content", "target"))
+	v := NewValidator(fakeSectionResolver{}, relpath.NewResolver("content", "target"), "target/index.html")
 
 	// expect
 	assert.NotNil(t, v)
@@ -140,10 +140,10 @@ func TestValidator_Validate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// setup
-			v := NewValidator(fakeSectionResolver{sections: tt.sections, err: tt.resolveErr}, pathResolver)
+			v := NewValidator(fakeSectionResolver{sections: tt.sections, err: tt.resolveErr}, pathResolver, tt.htmlPath)
 
 			// test
-			errs := v.Validate(tt.htmlPath, "target/build", []byte(tt.html))
+			errs := v.Validate([]byte(tt.html))
 
 			// expect
 			assert.Len(t, errs, tt.wantErrors)
