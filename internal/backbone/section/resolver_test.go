@@ -106,6 +106,62 @@ func TestSectionResolver_Resolve_ShouldReturnErrorWhenIndexFileHasNoTitle(t *tes
 	assert.ErrorContains(t, err, "no section title found")
 }
 
+func TestSectionResolver_Resolve_ShouldSortSectionsBySeq(t *testing.T) {
+	// given
+	contentDirectory := uuid.New().String()
+	rootTitle := uuid.New().String()
+	firstSection := uuid.New().String()
+	firstTitle := uuid.New().String()
+	secondSection := uuid.New().String()
+	secondTitle := uuid.New().String()
+
+	// setup
+	fs := afero.NewMemMapFs()
+	require.NoError(t, afero.WriteFile(fs, filepath.Join(contentDirectory, "index.md"), []byte("<!-- seq: 3 -->\n# "+rootTitle), 0644))
+	require.NoError(t, afero.WriteFile(fs, filepath.Join(contentDirectory, firstSection, "index.md"), []byte("<!-- seq: 1 -->\n# "+firstTitle), 0644))
+	require.NoError(t, afero.WriteFile(fs, filepath.Join(contentDirectory, secondSection, "index.md"), []byte("<!-- seq: 2 -->\n# "+secondTitle), 0644))
+	resolver := NewResolver(fs, contentDirectory)
+
+	// test
+	sections, err := resolver.Resolve()
+
+	// expect
+	require.NoError(t, err)
+	assert.Equal(t, []Section{
+		{HomePath: filepath.Join(contentDirectory, firstSection, "index.md"), DisplayName: firstTitle, Seq: 1},
+		{HomePath: filepath.Join(contentDirectory, secondSection, "index.md"), DisplayName: secondTitle, Seq: 2},
+		{HomePath: filepath.Join(contentDirectory, "index.md"), DisplayName: rootTitle, Seq: 3},
+	}, sections)
+}
+
+func TestSectionResolver_Resolve_ShouldSortUnsequencedSectionsLastByDisplayName(t *testing.T) {
+	// given
+	contentDirectory := uuid.New().String()
+	sequencedSection := uuid.New().String()
+	sequencedTitle := uuid.New().String()
+	// Prefixed so the expected display name order does not depend on the random suffix.
+	firstUnsequencedTitle := "a-" + uuid.New().String()
+	secondUnsequencedTitle := "b-" + uuid.New().String()
+
+	// setup
+	fs := afero.NewMemMapFs()
+	require.NoError(t, afero.WriteFile(fs, filepath.Join(contentDirectory, "index.md"), []byte("# "+secondUnsequencedTitle), 0644))
+	require.NoError(t, afero.WriteFile(fs, filepath.Join(contentDirectory, sequencedSection, "index.md"), []byte("<!-- seq: 9 -->\n# "+sequencedTitle), 0644))
+	require.NoError(t, afero.WriteFile(fs, filepath.Join(contentDirectory, uuid.New().String(), "index.md"), []byte("# "+firstUnsequencedTitle), 0644))
+	resolver := NewResolver(fs, contentDirectory)
+
+	// test
+	sections, err := resolver.Resolve()
+
+	// expect
+	require.NoError(t, err)
+	displayNames := make([]string, 0, len(sections))
+	for _, s := range sections {
+		displayNames = append(displayNames, s.DisplayName)
+	}
+	assert.Equal(t, []string{sequencedTitle, firstUnsequencedTitle, secondUnsequencedTitle}, displayNames)
+}
+
 func TestSectionResolver_ResolveForFile(t *testing.T) {
 	contentDirectory := uuid.New().String()
 	rootTitle := uuid.New().String()
@@ -151,6 +207,34 @@ func TestSectionResolver_ResolveForFile(t *testing.T) {
 			assert.Equal(t, tt.expected, section)
 		})
 	}
+}
+
+// Callers match the section owning the current file against the resolved section
+// list by struct equality, so ResolveForFile must fill every field exactly as
+// Resolve does, Seq included.
+func TestSectionResolver_ResolveForFile_ShouldReturnSectionEqualToItsResolveEntry(t *testing.T) {
+	// given
+	contentDirectory := uuid.New().String()
+	sectionDirectory := uuid.New().String()
+	sectionTitle := uuid.New().String()
+	markdownPath := filepath.Join(contentDirectory, sectionDirectory, "post.md")
+
+	// setup
+	fs := afero.NewMemMapFs()
+	require.NoError(t, afero.WriteFile(fs, filepath.Join(contentDirectory, "index.md"), []byte("<!-- seq: 1 -->\n# "+uuid.New().String()), 0644))
+	require.NoError(t, afero.WriteFile(fs, filepath.Join(contentDirectory, sectionDirectory, "index.md"), []byte("<!-- seq: 2 -->\n# "+sectionTitle), 0644))
+	require.NoError(t, afero.WriteFile(fs, markdownPath, []byte("# "+uuid.New().String()), 0644))
+	resolver := NewResolver(fs, contentDirectory)
+
+	// test
+	currentSection, err := resolver.ResolveForFile(markdownPath)
+	sections, resolveErr := resolver.Resolve()
+
+	// expect
+	require.NoError(t, err)
+	require.NoError(t, resolveErr)
+	assert.Equal(t, 2, currentSection.Seq)
+	assert.Contains(t, sections, currentSection)
 }
 
 func TestSectionResolver_ResolveForFile_ShouldReturnErrorOnRelFailure(t *testing.T) {
@@ -213,13 +297,8 @@ func TestExtractSectionTitle(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// setup
-			fs := afero.NewMemMapFs()
-			homeSectionFile := filepath.Join(uuid.New().String(), "index.md")
-			require.NoError(t, afero.WriteFile(fs, homeSectionFile, []byte(tt.content), 0644))
-
 			// test
-			extractedTitle, err := extractSectionTitle(fs, homeSectionFile)
+			extractedTitle, err := extractSectionTitle([]byte(tt.content))
 
 			// expect
 			require.NoError(t, err)
@@ -228,31 +307,24 @@ func TestExtractSectionTitle(t *testing.T) {
 	}
 }
 
-func TestExtractSectionTitle_ShouldReturnErrorWhenFileMissing(t *testing.T) {
-	// given
-	homeSectionFile := filepath.Join(uuid.New().String(), "index.md")
-
-	// setup
-	fs := afero.NewMemMapFs()
-
-	// test
-	_, err := extractSectionTitle(fs, homeSectionFile)
-
-	// expect
-	assert.ErrorContains(t, err, "afero.ReadFile err")
-}
-
 func TestExtractSectionTitle_ShouldReturnErrorWhenNoHeading(t *testing.T) {
-	// given
-	homeSectionFile := filepath.Join(uuid.New().String(), "index.md")
-
-	// setup
-	fs := afero.NewMemMapFs()
-	require.NoError(t, afero.WriteFile(fs, homeSectionFile, []byte("## "+uuid.New().String()+"\n\nsome content"), 0644))
-
 	// test
-	_, err := extractSectionTitle(fs, homeSectionFile)
+	_, err := extractSectionTitle([]byte("## " + uuid.New().String() + "\n\nsome content"))
 
 	// expect
 	assert.ErrorContains(t, err, "no section title found")
+}
+
+func TestExtractSection_ShouldReturnErrorWhenFileMissing(t *testing.T) {
+	// given
+	homeSectionFile := filepath.Join(uuid.New().String(), "index.md")
+
+	// setup
+	fs := afero.NewMemMapFs()
+
+	// test
+	_, err := extractSection(fs, homeSectionFile)
+
+	// expect
+	assert.ErrorContains(t, err, "afero.ReadFile err")
 }

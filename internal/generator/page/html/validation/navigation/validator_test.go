@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/tjnvr/blog/internal/generator/backbone/section"
+	"github.com/tjnvr/blog/internal/backbone/section"
 	"github.com/tjnvr/blog/internal/relpath"
 )
 
@@ -76,6 +76,22 @@ func TestValidator_Validate(t *testing.T) {
 				<p>Content</p>
 			</body></html>`,
 			wantErrors: 0,
+		},
+		{
+			name:     "nav links rendered in a different order than the sections",
+			sections: sections,
+			htmlPath: "target/build/index.html",
+			html: `<html><body>
+				<nav class="flex gap-4">
+					<a href="index.html">Accueil</a>
+					<a href="about/index.html">About</a>
+					<a href="posts/index.html">Posts</a>
+				</nav>
+			</body></html>`,
+			wantErrors: 1,
+			wantMsg: []string{
+				`link to section "content/markdown/about/index.md" is out of order`,
+			},
 		},
 		{
 			name:       "missing nav element entirely",

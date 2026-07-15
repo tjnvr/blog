@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"html/template"
 
-	"github.com/tjnvr/blog/internal/generator/backbone/section"
+	"github.com/tjnvr/blog/internal/backbone/section"
 	"github.com/tjnvr/blog/internal/relpath"
 )
 

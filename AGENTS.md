@@ -6,6 +6,6 @@
 
 ## Validating changes
 
-* After making changes, validate them by running `task --force validate generate`. This runs the full pipeline: format check, lint (golangci-lint **and** deadcode — unused code fails the build), tests, binary build, then regenerates the site.
+* After making changes, validate them by running `task --force validate generate`.
 
 * Iterate until the command passes end to end: fix every reported failure and re-run it. Do not consider a change complete until `task --force validate generate` is green.

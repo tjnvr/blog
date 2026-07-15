@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/afero"
 
-	"github.com/tjnvr/blog/internal/generator/backbone/section"
+	"github.com/tjnvr/blog/internal/backbone/section"
 	"github.com/tjnvr/blog/internal/generator/page/html/validation/access"
 	"github.com/tjnvr/blog/internal/generator/page/html/validation/htmlref"
 	"github.com/tjnvr/blog/internal/generator/page/html/validation/jssyntax"

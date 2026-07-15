@@ -1,3 +1,4 @@
+<!-- seq: 3 -->
 # À propos
 
 Je m'appelle Timothée Janvier. Je suis ingénieur chez [Piano Analytics](https://www.piano.io/product/analytics) où je travaille sur l'ingestion de la donnée dans la plateforme.

@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/afero"
-	"github.com/tjnvr/blog/internal/generator/backbone/section"
+	"github.com/tjnvr/blog/internal/backbone/section"
 	mfs "github.com/tjnvr/blog/internal/io/fs"
 	"github.com/tjnvr/blog/internal/relpath"
 )
@@ -16,7 +16,7 @@ type (
 		Validate() error
 	}
 
-	pageGeneratorFactory func(fs afero.Fs, sourceMDPath, destinationHTMLPath, buildDir string, sectionResolver section.Resolver, pagePathsResolver, assetPathsResolver relpath.Resolver, skipURLValidation bool) PageGenerator
+	pageGeneratorFactory func(fs afero.Fs, markdownPath, HTMLPath, buildDir string, sectionResolver section.Resolver, pagePathsResolver, assetPathsResolver relpath.Resolver, skipURLValidation bool) PageGenerator
 
 	Option func(*Generator)
 )
@@ -94,7 +94,6 @@ func (g *Generator) Generate() error {
 		return fmt.Errorf("CopyDir assets err: %v", err)
 	}
 
-	// Fixed: Copying JS scripts from ScriptsDir to ScriptsOutDir instead of AssetsDir
 	if err := g.dirCopier.CopyDir(mfs.NewFilesFinder(g.fs, mfs.WithExtension(".js")), g.ScriptsDir, g.ScriptsOutDir); err != nil {
 		return fmt.Errorf("CopyDir scripts err: %v", err)
 	}

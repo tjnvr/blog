@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/spf13/afero"
-	"github.com/tjnvr/blog/internal/generator/page/markdown/metadata"
+	"github.com/tjnvr/blog/internal/backbone/metadata"
 	mfs "github.com/tjnvr/blog/internal/io/fs"
 )
 

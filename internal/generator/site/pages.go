@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/spf13/afero"
-	"github.com/tjnvr/blog/internal/generator/backbone/section"
+	"github.com/tjnvr/blog/internal/backbone/section"
 	"github.com/tjnvr/blog/internal/generator/page"
 	htmlsubstitutions "github.com/tjnvr/blog/internal/generator/page/html/substitution"
 	"github.com/tjnvr/blog/internal/generator/page/html/validation"
