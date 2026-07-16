@@ -5,6 +5,7 @@ import (
 
 	"github.com/spf13/afero"
 
+	"github.com/tjnvr/blog/internal/abspath"
 	"github.com/tjnvr/blog/internal/generator/page/html/validation/access"
 	"github.com/tjnvr/blog/internal/generator/page/html/validation/htmlref"
 	"github.com/tjnvr/blog/internal/generator/page/html/validation/reference"
@@ -16,7 +17,7 @@ func ExampleValidator_Validate() {
 		htmlref.NewTagAttrExtractor("img", "src"),
 		htmlref.NewClassifier(),
 		access.NoopChecker{},
-		access.NewResolver(afero.NewMemMapFs(), "/build", "/build/index.html"),
+		abspath.NewResolver(afero.NewMemMapFs(), "/build", "/build/index.html"),
 		nil,
 		"/build/index.html", "image",
 	)
