@@ -1,4 +1,4 @@
-package access
+package abspath
 
 import (
 	"testing"
@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestLocalResolver_Resolve_ShouldResolveRelativeRefFromHTMLDirectory(t *testing.T) {
+func TestResolver_Resolve_ShouldResolveRelativeRefFromHTMLDirectory(t *testing.T) {
 	// setup
 	resolver := NewResolver(afero.NewMemMapFs(), "/build", "/build/posts/article.html")
 
@@ -19,7 +19,7 @@ func TestLocalResolver_Resolve_ShouldResolveRelativeRefFromHTMLDirectory(t *test
 	assert.Equal(t, "/build/assets/logo.png", path)
 }
 
-func TestLocalResolver_Resolve_ShouldResolveAbsoluteRefFromBuildRoot(t *testing.T) {
+func TestResolver_Resolve_ShouldResolveAbsoluteRefFromBuildRoot(t *testing.T) {
 	// setup
 	resolver := NewResolver(afero.NewMemMapFs(), "/build", "/build/posts/article.html")
 
@@ -30,7 +30,7 @@ func TestLocalResolver_Resolve_ShouldResolveAbsoluteRefFromBuildRoot(t *testing.
 	assert.Equal(t, "/build/assets/logo.png", path)
 }
 
-func TestLocalResolver_Resolve_ShouldIgnoreFragment(t *testing.T) {
+func TestResolver_Resolve_ShouldIgnoreFragment(t *testing.T) {
 	// setup
 	resolver := NewResolver(afero.NewMemMapFs(), "/build", "/build/index.html")
 
@@ -41,7 +41,7 @@ func TestLocalResolver_Resolve_ShouldIgnoreFragment(t *testing.T) {
 	assert.Equal(t, "/build/posts/article.html", path)
 }
 
-func TestLocalResolver_Exists_ShouldReturnTrueWhenFileExists(t *testing.T) {
+func TestResolver_Exists_ShouldReturnTrueWhenFileExists(t *testing.T) {
 	// given
 	name := uuid.New().String() + ".png"
 
@@ -58,7 +58,7 @@ func TestLocalResolver_Exists_ShouldReturnTrueWhenFileExists(t *testing.T) {
 	assert.True(t, ok)
 }
 
-func TestLocalResolver_Exists_ShouldReturnFalseWhenFileIsMissing(t *testing.T) {
+func TestResolver_Exists_ShouldReturnFalseWhenFileIsMissing(t *testing.T) {
 	// given
 	name := uuid.New().String() + ".png"
 
@@ -73,7 +73,7 @@ func TestLocalResolver_Exists_ShouldReturnFalseWhenFileIsMissing(t *testing.T) {
 	assert.False(t, ok)
 }
 
-func TestLocalResolver_Exists_ShouldReturnTrueForSamePageFragment(t *testing.T) {
+func TestResolver_Exists_ShouldReturnTrueForSamePageFragment(t *testing.T) {
 	// setup
 	resolver := NewResolver(afero.NewMemMapFs(), "/build", "/build/index.html")
 
@@ -85,7 +85,7 @@ func TestLocalResolver_Exists_ShouldReturnTrueForSamePageFragment(t *testing.T) 
 	assert.True(t, ok)
 }
 
-func TestLocalResolver_Exists_ShouldReturnTrueWhenTargetIsAnExistingDirectory(t *testing.T) {
+func TestResolver_Exists_ShouldReturnTrueWhenTargetIsAnExistingDirectory(t *testing.T) {
 	// setup
 	fs := afero.NewMemMapFs()
 	assert.NoError(t, afero.WriteFile(fs, "/build/posts/index.html", []byte("x"), 0644))

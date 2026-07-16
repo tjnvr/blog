@@ -1,11 +1,9 @@
-// Package access checks whether the references found in generated HTML are
-// reachable.
+// Package access checks whether external references found in generated HTML
+// are reachable.
 //
-// An ExternalChecker probes external URLs over HTTP. A LocalResolver resolves a
-// reference to a path in the build output and reports whether it exists on the
-// injected filesystem. Both are configured once per page and hold their fixed
-// state (timeout, filesystem, build root, page path) so callers pass only the
-// reference being checked.
+// An ExternalChecker probes external URLs over HTTP. It is configured once per
+// page and holds its fixed state (timeout) so callers pass only the URL being
+// checked.
 package access
 
 import (

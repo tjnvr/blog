@@ -1,4 +1,6 @@
-package access
+// Package abspath resolves references found in generated HTML to paths in the
+// build output.
+package abspath
 
 import (
 	"path/filepath"
@@ -7,15 +9,15 @@ import (
 	"github.com/spf13/afero"
 )
 
-// LocalResolver resolves a reference to a path in the build output and reports
+// Resolver resolves a reference to a path in the build output and reports
 // whether the target exists.
 //
 // The filesystem, the build output root and the HTML page being validated are
-// fixed for a validator instance and captured at construction; only the
+// fixed for a Resolver instance and captured at construction; only the
 // reference varies per call. Resolution matches how a browser reads relative
 // versus absolute paths: an absolute reference ("/assets/x") is resolved from
 // the build root, a relative one ("../x") from the directory of the page.
-type LocalResolver interface {
+type Resolver interface {
 	// Resolve returns the cleaned filesystem path for ref. Any URL fragment
 	// ("#...") is ignored.
 	Resolve(ref string) string
@@ -25,19 +27,19 @@ type LocalResolver interface {
 	Exists(ref string) (ok bool, err error)
 }
 
-type localResolver struct {
+type resolver struct {
 	fs       afero.Fs
 	buildDir string
 	htmlPath string
 }
 
-// NewResolver returns a LocalResolver backed by fs that resolves relative
+// NewResolver returns a Resolver backed by fs that resolves relative
 // references from the directory of htmlPath and absolute ones from buildDir.
-func NewResolver(fs afero.Fs, buildDir, htmlPath string) LocalResolver {
-	return &localResolver{fs: fs, buildDir: buildDir, htmlPath: htmlPath}
+func NewResolver(fs afero.Fs, buildDir, htmlPath string) Resolver {
+	return &resolver{fs: fs, buildDir: buildDir, htmlPath: htmlPath}
 }
 
-func (r *localResolver) Resolve(ref string) string {
+func (r *resolver) Resolve(ref string) string {
 	ref = stripFragment(ref)
 
 	var resolved string
@@ -49,7 +51,7 @@ func (r *localResolver) Resolve(ref string) string {
 	return filepath.Clean(resolved)
 }
 
-func (r *localResolver) Exists(ref string) (bool, error) {
+func (r *resolver) Exists(ref string) (bool, error) {
 	if stripFragment(ref) == "" {
 		return true, nil // same-page reference
 	}

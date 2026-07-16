@@ -6,6 +6,7 @@ import (
 
 	"github.com/spf13/afero"
 
+	"github.com/tjnvr/blog/internal/abspath"
 	"github.com/tjnvr/blog/internal/backbone/section"
 	"github.com/tjnvr/blog/internal/generator/page/html/validation/access"
 	"github.com/tjnvr/blog/internal/generator/page/html/validation/htmlref"
@@ -42,7 +43,7 @@ func NewRegistry(
 		external = access.NoopChecker{}
 	}
 
-	local := access.NewResolver(fs, buildDir, htmlPath)
+	local := abspath.NewResolver(fs, buildDir, htmlPath)
 
 	imageValidator := reference.NewValidator(
 		htmlref.NewTagAttrExtractor("img", "src"),
