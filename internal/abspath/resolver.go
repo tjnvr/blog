@@ -39,6 +39,18 @@ func NewResolver(fs afero.Fs, buildDir, htmlPath string) Resolver {
 	return &resolver{fs: fs, buildDir: buildDir, htmlPath: htmlPath}
 }
 
+// ResolverFactory builds a Resolver for the page at htmlPath, reusing the
+// filesystem and build root it was constructed with.
+type ResolverFactory func(htmlPath string) Resolver
+
+// NewResolverFactory returns a ResolverFactory that builds resolvers backed by
+// fs and buildDir.
+func NewResolverFactory(fs afero.Fs, buildDir string) ResolverFactory {
+	return func(htmlPath string) Resolver {
+		return NewResolver(fs, buildDir, htmlPath)
+	}
+}
+
 func (r *resolver) Resolve(ref string) string {
 	ref = stripFragment(ref)
 

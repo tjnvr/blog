@@ -27,13 +27,15 @@ type Registry struct {
 // NewRegistry builds the default validators for the page at htmlPath: image,
 // script and link reference validators plus the navigation validator.
 //
-// The build root (buildDir) and filesystem (fs) locate local targets;
-// sectionResolver and pagePathsResolver drive the navigation check; skipURL
-// disables external URL probing. All of these are fixed for the page, so the
-// returned Registry only needs the page content when Validate is called.
+// resolverFactory locates local targets for htmlPath; fs is used for the
+// script syntax check; sectionResolver and pagePathsResolver drive the
+// navigation check; skipURL disables external URL probing. All of these are
+// fixed for the page, so the returned Registry only needs the page content
+// when Validate is called.
 func NewRegistry(
-	htmlPath, buildDir string,
+	htmlPath string,
 	fs afero.Fs,
+	resolverFactory abspath.ResolverFactory,
 	sectionResolver section.Resolver,
 	pagePathsResolver relpath.Resolver,
 	skipURL bool,
@@ -43,7 +45,7 @@ func NewRegistry(
 		external = access.NoopChecker{}
 	}
 
-	local := abspath.NewResolver(fs, buildDir, htmlPath)
+	local := resolverFactory(htmlPath)
 
 	imageValidator := reference.NewValidator(
 		htmlref.NewTagAttrExtractor("img", "src"),

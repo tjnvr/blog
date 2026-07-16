@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/spf13/afero"
+	"github.com/tjnvr/blog/internal/abspath"
 	"github.com/tjnvr/blog/internal/backbone/section"
 	"github.com/tjnvr/blog/internal/generator/page"
 	htmlsubstitutions "github.com/tjnvr/blog/internal/generator/page/html/substitution"
@@ -51,7 +52,8 @@ func defaultPageGeneratorFactory(fs afero.Fs, sourceMDPath, destinationHTMLPath,
 	var (
 		markdownSubstitutions = mdsubstitutions.NewRegistry(sourceMDPath)
 		HTMLSubstitutions     = htmlsubstitutions.NewRegistry(destinationHTMLPath, sourceMDPath, sectionResolver, pagePathsResolver, assetPathsResolver)
-		validations           = validation.NewRegistry(destinationHTMLPath, buildDir, fs, sectionResolver, pagePathsResolver, skipURLValidation)
+		resolverFactory       = abspath.NewResolverFactory(fs, buildDir)
+		validations           = validation.NewRegistry(destinationHTMLPath, fs, resolverFactory, sectionResolver, pagePathsResolver, skipURLValidation)
 	)
 
 	return page.NewGenerator(sourceMDPath, destinationHTMLPath, fs, markdownSubstitutions, HTMLSubstitutions, validations)
