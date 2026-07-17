@@ -9,6 +9,9 @@ Un point à noter cependant est le fait que je ne veux pas utiliser de LLMs pour
 
 J'ai chiffré chaque étape pour en faire un véritable plan de charge et suivre ma progression en heures : **volume total estimé ~250h**. Ces estimations sont calibrées pour mon cas et seront réajustées au fil de l'avancement.
 
+
+_L'idée est de me construire une feuille de route vivante où je documente mon avancement :_
+
 {{summary}}
 
 ## Feuille de route chronologique
