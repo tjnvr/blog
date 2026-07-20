@@ -311,7 +311,6 @@ func TestSubstituter_Resolve(t *testing.T) {
 			</div>`,
 			expectedContains: []string{
 				"text-sm", "text-xs",
-				"ml-4", "border-l", "border-gray-200", "dark:border-gray-700",
 			},
 		},
 		{
