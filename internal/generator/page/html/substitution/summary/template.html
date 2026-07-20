@@ -1,6 +1,6 @@
 {{- define "node" -}}
-<li class="ml-4 border-l border-gray-200 dark:border-gray-700 pl-4 py-1">
-    <a href="#{{.ID}}" class="{{ if eq .Level 2 }}text-sm{{ else }}text-xs{{ end }}block">{{.Text}}</a>
+<li>
+    <a href="#{{.ID}}" class="{{ if eq .Level 2 }}text-sm{{ else }}text-xs{{ end }}">{{.Text}}</a>
     {{- if .Children -}}
         <ul>
             {{- range .Children -}}
@@ -12,6 +12,7 @@
 {{- end -}}
 
 {{- define "toc" -}}
+<hr class="border-gray-200 dark:border-gray-700 my-6">
 <nav>
     <ul>
         {{- range . -}}
