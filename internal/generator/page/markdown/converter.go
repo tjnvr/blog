@@ -19,10 +19,14 @@ type Converter struct {
 func NewConverter() *Converter {
 	return &Converter{
 		md: goldmark.New(
+			goldmark.WithExtensions(extension.Footnote),
 			goldmark.WithExtensions(extension.GFM),
 			goldmark.WithParserOptions(
 				parser.WithAttribute(),
 				parser.WithAutoHeadingID(),
+				parser.WithASTTransformers(
+					util.Prioritized(&ImageAttributeTransformer{}, 100),
+				),
 			),
 			goldmark.WithRendererOptions(
 				renderer.WithNodeRenderers(
