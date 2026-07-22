@@ -71,8 +71,8 @@ func (r *resolver) Exists(ref string) (bool, error) {
 }
 
 func stripFragment(ref string) string {
-	if i := strings.IndexByte(ref, '#'); i >= 0 {
-		return ref[:i]
+	if before, _, ok := strings.Cut(ref, "#"); ok {
+		return before
 	}
 	return ref
 }

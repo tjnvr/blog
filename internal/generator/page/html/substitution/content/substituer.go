@@ -7,18 +7,20 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/tjnvr/blog/internal/hrefpath"
 	"github.com/tjnvr/blog/internal/relpath"
 )
 
 type (
 	substituter struct {
-		HTMLPath                              string
-		markdownPath                          string
-		pagePathsResolver, assetPathsResolver relpath.Resolver
+		HTMLPath           string
+		markdownPath       string
+		pagePathsResolver  hrefpath.Resolver
+		assetPathsResolver relpath.Resolver
 	}
 )
 
-func NewSubstituer(HTMLPath, markdownSourcePath string, assetPathsTranslater relpath.Resolver, pagePathsResolver relpath.Resolver) substituter {
+func NewSubstituer(HTMLPath, markdownSourcePath string, assetPathsTranslater relpath.Resolver, pagePathsResolver hrefpath.Resolver) substituter {
 	return substituter{
 		HTMLPath:           HTMLPath,
 		markdownPath:       markdownSourcePath,
@@ -35,7 +37,7 @@ func (s substituter) Resolve(htmlContent string) (string, error) {
 	var errs error
 	var err error
 
-	htmlContent, err = s.convertMdLinksPath(htmlContent, s.HTMLPath)
+	htmlContent, err = s.convertMdLinksPath(htmlContent)
 	if err != nil {
 		errs = errors.Join(errs, fmt.Errorf("s.convertMdLinksPath err: %w", err))
 	}
@@ -48,7 +50,7 @@ func (s substituter) Resolve(htmlContent string) (string, error) {
 	return htmlContent, errs
 }
 
-func (s substituter) replacePaths(html, HTMLPath string, re *regexp.Regexp, relpathResolver relpath.Resolver, modifyPath func(string) string) (string, error) {
+func (s substituter) replacePaths(html string, re *regexp.Regexp, resolve func(oldPath string) (string, error), modifyPath func(string) string) (string, error) {
 	var errs error
 
 	result := re.ReplaceAllStringFunc(html, func(match string) string {
@@ -71,7 +73,7 @@ func (s substituter) replacePaths(html, HTMLPath string, re *regexp.Regexp, relp
 			fullOldPath = modifyPath(fullOldPath)
 		}
 
-		newPath, err := relpathResolver.Resolve(fullOldPath, HTMLPath)
+		newPath, err := resolve(fullOldPath)
 		if err != nil {
 			errs = errors.Join(errs, err)
 			return match
@@ -83,12 +85,14 @@ func (s substituter) replacePaths(html, HTMLPath string, re *regexp.Regexp, relp
 	return result, errs
 }
 
-func (s substituter) convertMdLinksPath(html string, HTMLPath string) (string, error) {
+func (s substituter) convertMdLinksPath(html string) (string, error) {
 	re := regexp.MustCompile(`(href=")([^"]*\.md)(")`)
-	return s.replacePaths(html, HTMLPath, re, s.pagePathsResolver, nil)
+	return s.replacePaths(html, re, s.pagePathsResolver.Resolve, nil)
 }
 
 func (s substituter) convertAssetsPath(html string, HTMLPath string) (string, error) {
 	re := regexp.MustCompile(`(<img[^>]+src=")([^"]+)(")`)
-	return s.replacePaths(html, HTMLPath, re, s.assetPathsResolver, nil)
+	return s.replacePaths(html, re, func(oldPath string) (string, error) {
+		return s.assetPathsResolver.Resolve(oldPath, HTMLPath)
+	}, nil)
 }

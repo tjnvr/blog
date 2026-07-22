@@ -9,6 +9,7 @@ import (
 	"github.com/tjnvr/blog/internal/generator/page/html/substitution/navigation"
 	"github.com/tjnvr/blog/internal/generator/page/html/substitution/summary"
 	"github.com/tjnvr/blog/internal/generator/page/html/substitution/title"
+	"github.com/tjnvr/blog/internal/hrefpath"
 	"github.com/tjnvr/blog/internal/relpath"
 )
 
@@ -18,7 +19,7 @@ type Registry struct {
 }
 
 // NewRegistry creates a new substitution registry with default substituters
-func NewRegistry(HTMLPath, markdownSourcePath string, sectionResolver section.Resolver, pagesPathResolver, assetsPathResolver relpath.Resolver) *Registry {
+func NewRegistry(HTMLPath, markdownSourcePath string, sectionResolver section.Resolver, pagesPathResolver hrefpath.Resolver, assetsPathResolver relpath.Resolver) *Registry {
 	return newRegistryWithSubstituters(
 		content.NewSubstituer(HTMLPath, markdownSourcePath, assetsPathResolver, pagesPathResolver),
 		summary.NewSubstituer(),

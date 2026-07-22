@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/tjnvr/blog/internal/backbone/section"
-	"github.com/tjnvr/blog/internal/relpath"
+	"github.com/tjnvr/blog/internal/hrefpath"
 )
 
 // Validator checks that the generated HTML contains a <nav> element with links
@@ -14,7 +14,7 @@ import (
 // them.
 type Validator struct {
 	sectionResolver section.Resolver
-	pathResolver    relpath.Resolver
+	pathResolver    hrefpath.Resolver
 	htmlPath        string
 	navRegex        *regexp.Regexp
 }
@@ -24,7 +24,7 @@ type Validator struct {
 // must resolve a section's markdown HomePath into the same href the navigation
 // substituter generates, so expected and generated hrefs stay in sync. htmlPath
 // is fixed for the page and captured here rather than passed to Validate.
-func NewValidator(sectionResolver section.Resolver, pathResolver relpath.Resolver, htmlPath string) *Validator {
+func NewValidator(sectionResolver section.Resolver, pathResolver hrefpath.Resolver, htmlPath string) *Validator {
 	return &Validator{
 		sectionResolver: sectionResolver,
 		pathResolver:    pathResolver,
@@ -57,7 +57,7 @@ func (v *Validator) Validate(content []byte) []error {
 	previousSection := ""
 
 	for _, s := range sections {
-		expectedHref, err := v.pathResolver.Resolve(s.HomePath, v.htmlPath)
+		expectedHref, err := v.pathResolver.Resolve(s.HomePath)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("%s: cannot resolve expected href for section %q: %v", v.htmlPath, s.HomePath, err))
 			continue
