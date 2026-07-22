@@ -12,12 +12,12 @@ import (
 )
 
 type mockPathResolver struct {
-	ResolveFunc func(oldPath, fromPath string) (string, error)
+	ResolveFunc func(oldPath string) (string, error)
 }
 
-func (m *mockPathResolver) Resolve(oldPath, fromPath string) (string, error) {
+func (m *mockPathResolver) Resolve(oldPath string) (string, error) {
 	if m.ResolveFunc != nil {
-		return m.ResolveFunc(oldPath, fromPath)
+		return m.ResolveFunc(oldPath)
 	}
 	return "", errors.New("not implemented")
 }
@@ -81,11 +81,10 @@ func TestSubstituter_Resolve_ShouldCallCollaboratorsWithExpectedArguments(t *tes
 	href := uuid.New().String()
 
 	// setup
-	var capturedMarkdownSourcePath, capturedOldPath, capturedFromPath string
+	var capturedMarkdownSourcePath, capturedOldPath string
 	pathResolver := &mockPathResolver{
-		ResolveFunc: func(oldPath, fromPath string) (string, error) {
+		ResolveFunc: func(oldPath string) (string, error) {
 			capturedOldPath = oldPath
-			capturedFromPath = fromPath
 			return href, nil
 		},
 	}
@@ -107,7 +106,6 @@ func TestSubstituter_Resolve_ShouldCallCollaboratorsWithExpectedArguments(t *tes
 	assert.NoError(t, err)
 	assert.Equal(t, markdownSourcePath, capturedMarkdownSourcePath)
 	assert.Equal(t, sect.HomePath, capturedOldPath)
-	assert.Equal(t, htmlPath, capturedFromPath)
 }
 
 func TestSubstituter_Resolve(t *testing.T) {
@@ -178,7 +176,7 @@ func TestSubstituter_Resolve(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// setup
 			pathResolver := &mockPathResolver{
-				ResolveFunc: func(oldPath, _ string) (string, error) {
+				ResolveFunc: func(oldPath string) (string, error) {
 					if tt.hrefErr != nil {
 						return "", tt.hrefErr
 					}

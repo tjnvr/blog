@@ -7,7 +7,7 @@ import (
 	"html/template"
 
 	"github.com/tjnvr/blog/internal/backbone/section"
-	"github.com/tjnvr/blog/internal/relpath"
+	"github.com/tjnvr/blog/internal/hrefpath"
 )
 
 var (
@@ -22,7 +22,7 @@ type (
 	// substituter resolves {{navigation}} placeholder with an auto-generated nav bar
 	substituter struct {
 		template         *template.Template
-		pathsResolver    relpath.Resolver
+		pathsResolver    hrefpath.Resolver
 		sectionsResolver section.Resolver
 		markdownPath     string
 		HTMLPath         string
@@ -35,7 +35,7 @@ type (
 	}
 )
 
-func NewSubstituer(pathsResolver relpath.Resolver, sectionsResolver section.Resolver, markdownPath, HTMLPath string) substituter {
+func NewSubstituer(pathsResolver hrefpath.Resolver, sectionsResolver section.Resolver, markdownPath, HTMLPath string) substituter {
 	return substituter{
 		template:         template.Must(template.New("nav").Parse(navTemplate)),
 		pathsResolver:    pathsResolver,
@@ -61,7 +61,7 @@ func (n substituter) Resolve(_ string) (string, error) {
 	}
 	var navItems = make([]navItem, len(sections))
 	for i, s := range sections {
-		hRef, err := n.pathsResolver.Resolve(s.HomePath, n.HTMLPath)
+		hRef, err := n.pathsResolver.Resolve(s.HomePath)
 		if err != nil {
 			return "", fmt.Errorf("GetHRef err for '%s' from '%s', %v", s.HomePath, n.HTMLPath, err)
 		}
