@@ -11,6 +11,14 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+type mockHrefResolver struct {
+	resolveFn func(oldPath string) (string, error)
+}
+
+func (m mockHrefResolver) Resolve(oldPath string) (string, error) {
+	return m.resolveFn(oldPath)
+}
+
 type mockPathTranslater struct {
 	resolveFn func(oldPath, fromPath string) (string, error)
 }
@@ -27,14 +35,14 @@ func TestSubstituter_Resolve(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		linkFn      func(string, string) (string, error)
+		linkFn      func(string) (string, error)
 		assetFn     func(string, string) (string, error)
 		wantStr     string
 		wantErrMsgs []string
 	}{
 		{
 			name: "Successful resolution of both links and assets",
-			linkFn: func(o, f string) (string, error) {
+			linkFn: func(o string) (string, error) {
 				return resLink, nil
 			},
 			assetFn: func(o, f string) (string, error) {
@@ -44,7 +52,7 @@ func TestSubstituter_Resolve(t *testing.T) {
 		},
 		{
 			name: "Joins errors when both translating sub-systems fail",
-			linkFn: func(o, f string) (string, error) {
+			linkFn: func(o string) (string, error) {
 				return "", errors.New(linkErr)
 			},
 			assetFn: func(o, f string) (string, error) {
@@ -62,7 +70,7 @@ func TestSubstituter_Resolve(t *testing.T) {
 			// setup
 			s := substituter{
 				markdownPath:       "index.md",
-				pagePathsResolver:  mockPathTranslater{resolveFn: tt.linkFn},
+				pagePathsResolver:  mockHrefResolver{resolveFn: tt.linkFn},
 				assetPathsResolver: mockPathTranslater{resolveFn: tt.assetFn},
 			}
 
@@ -93,7 +101,7 @@ func TestSubstituter_ReplacePaths(t *testing.T) {
 		name       string
 		html       string
 		re         *regexp.Regexp
-		resolveFn  func(string, string) (string, error)
+		resolveFn  func(string) (string, error)
 		modifyFn   func(string) string
 		wantStr    string
 		wantErrMsg string
@@ -102,7 +110,7 @@ func TestSubstituter_ReplacePaths(t *testing.T) {
 			name: "Substitutes relative asset path smoothly",
 			html: `<img src="sub/image.png">`,
 			re:   imgRe,
-			resolveFn: func(o, f string) (string, error) {
+			resolveFn: func(o string) (string, error) {
 				return resPath, nil
 			},
 			wantStr: fmt.Sprintf(`<img src="%s">`, resPath),
@@ -114,7 +122,7 @@ func TestSubstituter_ReplacePaths(t *testing.T) {
 			modifyFn: func(p string) string {
 				return p + ".processed"
 			},
-			resolveFn: func(o, f string) (string, error) {
+			resolveFn: func(o string) (string, error) {
 				if strings.HasSuffix(o, ".processed") {
 					return resPath, nil
 				}
@@ -126,7 +134,7 @@ func TestSubstituter_ReplacePaths(t *testing.T) {
 			name: "Skips external http addresses",
 			html: `<img src="http://example.com/avatar.jpg">`,
 			re:   imgRe,
-			resolveFn: func(o, f string) (string, error) {
+			resolveFn: func(o string) (string, error) {
 				return uuid.New().String(), nil
 			},
 			wantStr: `<img src="http://example.com/avatar.jpg">`,
@@ -135,7 +143,7 @@ func TestSubstituter_ReplacePaths(t *testing.T) {
 			name: "Skips external https addresses",
 			html: `<img src="https://example.com/avatar.jpg">`,
 			re:   imgRe,
-			resolveFn: func(o, f string) (string, error) {
+			resolveFn: func(o string) (string, error) {
 				return uuid.New().String(), nil
 			},
 			wantStr: `<img src="https://example.com/avatar.jpg">`,
@@ -144,7 +152,7 @@ func TestSubstituter_ReplacePaths(t *testing.T) {
 			name: "Skips local absolute routes",
 			html: `<img src="/global-assets/avatar.jpg">`,
 			re:   imgRe,
-			resolveFn: func(o, f string) (string, error) {
+			resolveFn: func(o string) (string, error) {
 				return uuid.New().String(), nil
 			},
 			wantStr: `<img src="/global-assets/avatar.jpg">`,
@@ -153,7 +161,7 @@ func TestSubstituter_ReplacePaths(t *testing.T) {
 			name: "Accumulates multiple sequential processing errors",
 			html: `<img src="err1.png"><img src="err2.png">`,
 			re:   imgRe,
-			resolveFn: func(o, f string) (string, error) {
+			resolveFn: func(o string) (string, error) {
 				return "", errors.New(errReason)
 			},
 			wantErrMsg: fmt.Sprintf("%s\n%s", errReason, errReason),
@@ -163,14 +171,10 @@ func TestSubstituter_ReplacePaths(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// given
-			targetFile := uuid.New().String()
-
-			// setup
 			s := substituter{markdownPath: "docs/index.md"}
-			mock := mockPathTranslater{resolveFn: tt.resolveFn}
 
 			// test
-			got, err := s.replacePaths(tt.html, targetFile, tt.re, mock, tt.modifyFn)
+			got, err := s.replacePaths(tt.html, tt.re, tt.resolveFn, tt.modifyFn)
 
 			// expect
 			if tt.wantErrMsg != "" {
@@ -201,21 +205,18 @@ func TestSubstituter_ConvertMdLinksPath(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// given
-			targetFile := uuid.New().String()
-
 			// setup
 			s := substituter{
 				markdownPath: "index.md",
-				pagePathsResolver: mockPathTranslater{
-					resolveFn: func(oldPath, fromPath string) (string, error) {
+				pagePathsResolver: mockHrefResolver{
+					resolveFn: func(oldPath string) (string, error) {
 						return resLink, nil
 					},
 				},
 			}
 
 			// test
-			got, err := s.convertMdLinksPath(tt.html, targetFile)
+			got, err := s.convertMdLinksPath(tt.html)
 
 			// expect
 			assert.NoError(t, err)

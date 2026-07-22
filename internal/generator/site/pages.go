@@ -12,10 +12,11 @@ import (
 	htmlsubstitutions "github.com/tjnvr/blog/internal/generator/page/html/substitution"
 	"github.com/tjnvr/blog/internal/generator/page/html/validation"
 	mdsubstitutions "github.com/tjnvr/blog/internal/generator/page/markdown/substitution"
+	"github.com/tjnvr/blog/internal/hrefpath"
 	"github.com/tjnvr/blog/internal/relpath"
 )
 
-func (g *Generator) generatePages(assetsPathTranslater, linksPathTranslater relpath.Resolver) error {
+func (g *Generator) generatePages(assetsPathTranslater, linksPathTranslater relpath.Resolver, hrefPathTranslater hrefpath.Resolver) error {
 	errs := make([]error, 0)
 	pagePaths, err := g.pagesFinder.FindFiles(g.ContentDir)
 	if err != nil {
@@ -30,7 +31,7 @@ func (g *Generator) generatePages(assetsPathTranslater, linksPathTranslater relp
 			continue
 		}
 
-		g.pagesGenerators = append(g.pagesGenerators, g.pageGeneratorFactory(g.fs, pagePath, HTMLPath, g.BuildDir, g.sectionResolver, linksPathTranslater, assetsPathTranslater, g.skipURLValidation))
+		g.pagesGenerators = append(g.pagesGenerators, g.pageGeneratorFactory(g.fs, pagePath, HTMLPath, g.absolutePathsResolverFactory, g.sectionResolver, hrefPathTranslater, assetsPathTranslater, g.skipURLValidation))
 	}
 
 	for _, generator := range g.pagesGenerators {
@@ -48,12 +49,11 @@ func (g *Generator) generatePages(assetsPathTranslater, linksPathTranslater relp
 	return nil
 }
 
-func defaultPageGeneratorFactory(fs afero.Fs, sourceMDPath, destinationHTMLPath, buildDir string, sectionResolver section.Resolver, pagePathsResolver, assetPathsResolver relpath.Resolver, skipURLValidation bool) PageGenerator {
+func defaultPageGeneratorFactory(fs afero.Fs, sourceMDPath, destinationHTMLPath string, absolutePathsResolverFactory abspath.ResolverFactory, sectionResolver section.Resolver, hrefPathsResolver hrefpath.Resolver, assetPathsResolver relpath.Resolver, skipURLValidation bool) PageGenerator {
 	var (
 		markdownSubstitutions = mdsubstitutions.NewRegistry(sourceMDPath)
-		HTMLSubstitutions     = htmlsubstitutions.NewRegistry(destinationHTMLPath, sourceMDPath, sectionResolver, pagePathsResolver, assetPathsResolver)
-		resolverFactory       = abspath.NewResolverFactory(fs, buildDir)
-		validations           = validation.NewRegistry(destinationHTMLPath, fs, resolverFactory, sectionResolver, pagePathsResolver, skipURLValidation)
+		HTMLSubstitutions     = htmlsubstitutions.NewRegistry(destinationHTMLPath, sourceMDPath, sectionResolver, hrefPathsResolver, assetPathsResolver)
+		validations           = validation.NewRegistry(destinationHTMLPath, fs, absolutePathsResolverFactory, sectionResolver, hrefPathsResolver, skipURLValidation)
 	)
 
 	return page.NewGenerator(sourceMDPath, destinationHTMLPath, fs, markdownSubstitutions, HTMLSubstitutions, validations)
