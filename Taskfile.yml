@@ -3,10 +3,11 @@ version: "3"
 env:
   CONTENT_DIR: content/markdown
   BUILD_DIR: target/build
+  PUBLIC_DIR: target/build/public
   ASSETS_DIR: content/assets
-  ASSETS_OUT_DIR: target/build/assets
+  ASSETS_OUT_DIR: target/build/public/assets
   SCRIPTS_DIR: scripts
-  SCRIPTS_OUT_DIR: target/build/scripts
+  SCRIPTS_OUT_DIR: target/build/public/scripts
 
 vars:
   IMAGES_DIR: content/assets/images
@@ -150,21 +151,59 @@ tasks:
     sources:
       - styles/input.css
     generates:
-      - "{{.BUILD_DIR}}/styles.css"
+      - "{{.PUBLIC_DIR}}/styles.css"
     cmds:
       - ./{{.BUILD_DIR}}/bin/tailwindcss -i ./styles/input.css -o
-        ./{{.BUILD_DIR}}/styles.css --minify
+        ./{{.PUBLIC_DIR}}/styles.css --minify
 
   clean:
     desc: Remove build artifacts
     cmds:
       - rm -rf {{.BUILD_DIR}}
 
+  deploy:
+    desc: Sync the built site to S3 and invalidate CloudFront
+    cmds:
+      - |
+        if [ -z "$S3_BUCKET" ]; then
+          echo "S3_BUCKET environment variable is required" >&2
+          exit 1
+        fi
+        if [ -z "$CLOUDFRONT_DISTRIBUTION_ID" ]; then
+          echo "CLOUDFRONT_DISTRIBUTION_ID environment variable is required" >&2
+          exit 1
+        fi
+
+        # Files with an extension (assets, css, js): let AWS auto-detect content-type
+        aws s3 sync {{.PUBLIC_DIR}}/ "s3://$S3_BUCKET/" --delete --exclude "*" --include "*.*"
+
+        # Extensionless files (HTML pages): force text/html
+        aws s3 sync {{.PUBLIC_DIR}}/ "s3://$S3_BUCKET/" --delete --exclude "*.*" --content-type "text/html; charset=utf-8"
+
+        # S3 has no real directory hierarchy: unlike a local filesystem, "section" and
+        # "section/random-page" can coexist as independent keys.
+        #
+        # Section index pages are generated locally as "<dir>/index" and renamed
+        # server-side to the literal key "<dir>", matching their href exactly.
+        # Locally, browser-sync-config.js's middleware fakes this rename per-request instead.
+        aws s3api list-objects-v2 --bucket "$S3_BUCKET" \
+          --query "Contents[?ends_with(Key, '/index')].Key" --output text |
+          tr '\t' '\n' | while IFS= read -r key; do
+            [ -z "$key" ] && continue
+            newkey="${key%/index}"
+            echo "Renaming s3://$S3_BUCKET/$key -> s3://$S3_BUCKET/$newkey"
+            aws s3 cp "s3://$S3_BUCKET/$key" "s3://$S3_BUCKET/$newkey" \
+              --content-type "text/html; charset=utf-8" --metadata-directive REPLACE
+            aws s3 rm "s3://$S3_BUCKET/$key"
+          done
+
+        aws cloudfront create-invalidation --distribution-id "$CLOUDFRONT_DISTRIBUTION_ID" --paths "/*"
+
   serve:
     deps:
     - task: generate
     cmds:
-        - browser-sync start --no-ui --server {{.BUILD_DIR}}
+        - browser-sync start --no-ui --config browser-sync-config.js
 
   dev:
     desc: Serve locally with live reload

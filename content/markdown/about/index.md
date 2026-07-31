@@ -9,6 +9,6 @@ Pour cela je développe principalement en Go et en Java et je déploie sur le _c
 
 * __Maîtriser un socle technique de A à Z__ : du développement applicatif jusqu'au suivi en production en passant par l'industrialisation des déploiements.
 * __Assurer la cohérence et l'évolution d'un produit technique__ construit sur plus de 10 ans d'historique.
-* __Résoudre des problèmes concrets au croisement de plusieurs disciplines__ : réseau, _tracking_, ingénierie logicielle et travail en équipe — avec chaque jour son lot de questions nouvelles.
+* __Résoudre des problèmes concrets au croisement de plusieurs disciplines__ : réseau, _tracking_, ingénierie logicielle et travail en équipe ; avec chaque jour son lot de questions nouvelles.
 
 J'ai rejoint Piano en 2022 après une formation en ingénierie logicielle et en télécommunications à l'ENSEIRB-MATMECA. C'est pendant un module sur le _cloud computing_ animé par un intervenant externe que j'ai découvert cet univers qui me passionne depuis.

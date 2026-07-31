@@ -17,7 +17,7 @@ func main() {
 		AssetsDir:     os.Getenv("ASSETS_DIR"),
 		AssetsOutDir:  os.Getenv("ASSETS_OUT_DIR"),
 		ContentDir:    os.Getenv("CONTENT_DIR"),
-		BuildDir:      os.Getenv("BUILD_DIR"),
+		PublicDir:     os.Getenv("PUBLIC_DIR"),
 		ScriptsDir:    os.Getenv("SCRIPTS_DIR"),
 		ScriptsOutDir: os.Getenv("SCRIPTS_OUT_DIR"),
 	}
