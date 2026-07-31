@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/tjnvr/blog/internal/backbone/section"
-	"github.com/tjnvr/blog/internal/relpath"
+	"github.com/tjnvr/blog/internal/hrefpath"
 )
 
 type fakeSectionResolver struct {
@@ -25,7 +25,7 @@ func (f fakeSectionResolver) ResolveForFile(string) (section.Section, error) {
 
 func TestNewValidator_ShouldCreateValidValidator(t *testing.T) {
 	// setup
-	v := NewValidator(fakeSectionResolver{}, relpath.NewResolver("content", "target"), "target/index.html")
+	v := NewValidator(fakeSectionResolver{}, hrefpath.NewResolver("content"), "target/index")
 
 	// expect
 	assert.NotNil(t, v)
@@ -38,7 +38,7 @@ func TestValidator_Validate(t *testing.T) {
 		{HomePath: "content/markdown/posts/index.md", DisplayName: "Posts"},
 		{HomePath: "content/markdown/about/index.md", DisplayName: "About"},
 	}
-	pathResolver := relpath.NewResolver("content/markdown", "target/build", relpath.WithExtension(".html"))
+	pathResolver := hrefpath.NewResolver("content/markdown")
 
 	tests := []struct {
 		name       string
@@ -52,26 +52,26 @@ func TestValidator_Validate(t *testing.T) {
 		{
 			name:     "valid nav from the root page",
 			sections: sections,
-			htmlPath: "target/build/index.html",
+			htmlPath: "target/build/index",
 			html: `<html><body>
 				<nav class="flex gap-4">
-					<a href="index.html">Accueil</a>
-					<a href="posts/index.html">Posts</a>
-					<a href="about/index.html">About</a>
+					<a href="/">Accueil</a>
+					<a href="/posts">Posts</a>
+					<a href="/about">About</a>
 				</nav>
 				<p>Content</p>
 			</body></html>`,
 			wantErrors: 0,
 		},
 		{
-			name:     "valid nav from a nested section page",
+			name:     "valid nav from a nested section page, hrefs stay absolute regardless of htmlPath",
 			sections: sections,
-			htmlPath: "target/build/about/index.html",
+			htmlPath: "target/build/about/index",
 			html: `<html><body>
 				<nav class="flex gap-4">
-					<a href="../index.html">Accueil</a>
-					<a href="../posts/index.html">Posts</a>
-					<a href="index.html">About</a>
+					<a href="/">Accueil</a>
+					<a href="/posts">Posts</a>
+					<a href="/about">About</a>
 				</nav>
 				<p>Content</p>
 			</body></html>`,
@@ -80,12 +80,12 @@ func TestValidator_Validate(t *testing.T) {
 		{
 			name:     "nav links rendered in a different order than the sections",
 			sections: sections,
-			htmlPath: "target/build/index.html",
+			htmlPath: "target/build/index",
 			html: `<html><body>
 				<nav class="flex gap-4">
-					<a href="index.html">Accueil</a>
-					<a href="about/index.html">About</a>
-					<a href="posts/index.html">Posts</a>
+					<a href="/">Accueil</a>
+					<a href="/about">About</a>
+					<a href="/posts">Posts</a>
 				</nav>
 			</body></html>`,
 			wantErrors: 1,
@@ -96,7 +96,7 @@ func TestValidator_Validate(t *testing.T) {
 		{
 			name:       "missing nav element entirely",
 			sections:   sections,
-			htmlPath:   "target/build/index.html",
+			htmlPath:   "target/build/index",
 			html:       `<html><body><p>No nav here</p></body></html>`,
 			wantErrors: 1,
 			wantMsg:    []string{"missing <nav> element"},
@@ -104,11 +104,11 @@ func TestValidator_Validate(t *testing.T) {
 		{
 			name:     "nav missing a section link and display name",
 			sections: sections,
-			htmlPath: "target/build/index.html",
+			htmlPath: "target/build/index",
 			html: `<html><body>
 				<nav>
-					<a href="index.html">Accueil</a>
-					<a href="posts/index.html">Posts</a>
+					<a href="/">Accueil</a>
+					<a href="/posts">Posts</a>
 				</nav>
 			</body></html>`,
 			wantErrors: 2,
@@ -120,7 +120,7 @@ func TestValidator_Validate(t *testing.T) {
 		{
 			name:       "propagates sectionResolver error",
 			resolveErr: errors.New("boom"),
-			htmlPath:   "target/build/index.html",
+			htmlPath:   "target/build/index",
 			html:       `<html><body><nav></nav></body></html>`,
 			wantErrors: 1,
 			wantMsg:    []string{"sectionResolver.Resolve err"},
@@ -130,7 +130,7 @@ func TestValidator_Validate(t *testing.T) {
 			sections: []section.Section{
 				{HomePath: "other/index.md", DisplayName: "Elsewhere"},
 			},
-			htmlPath:   "target/build/index.html",
+			htmlPath:   "target/build/index",
 			html:       `<html><body><nav></nav></body></html>`,
 			wantErrors: 1,
 			wantMsg:    []string{"cannot resolve expected href"},

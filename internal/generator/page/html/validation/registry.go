@@ -13,7 +13,7 @@ import (
 	"github.com/tjnvr/blog/internal/generator/page/html/validation/jssyntax"
 	"github.com/tjnvr/blog/internal/generator/page/html/validation/navigation"
 	"github.com/tjnvr/blog/internal/generator/page/html/validation/reference"
-	"github.com/tjnvr/blog/internal/relpath"
+	"github.com/tjnvr/blog/internal/hrefpath"
 )
 
 // externalTimeout bounds each HTTP request made while validating external URLs.
@@ -37,7 +37,7 @@ func NewRegistry(
 	fs afero.Fs,
 	resolverFactory abspath.ResolverFactory,
 	sectionResolver section.Resolver,
-	pagePathsResolver relpath.Resolver,
+	pagePathsResolver hrefpath.Resolver,
 	skipURL bool,
 ) *Registry {
 	external := access.NewHTTPChecker(externalTimeout)

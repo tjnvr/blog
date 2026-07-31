@@ -28,7 +28,7 @@ type (
 	}
 	resolver struct {
 		oldPathDirectory, newPathDirectory string
-		targetExtension                    string
+		targetExtension                    *string
 	}
 
 	// Option configures a Resolver created via NewResolver.
@@ -40,7 +40,7 @@ type (
 // of its generated output (e.g. HTML).
 func WithExtension(ext string) Option {
 	return func(r *resolver) {
-		r.targetExtension = ext
+		r.targetExtension = &ext
 	}
 }
 
@@ -56,8 +56,8 @@ func NewResolver(oldPathDirectory, newPathDirectory string, opts ...Option) Reso
 }
 
 func (r resolver) Resolve(oldPath, fromPath string) (string, error) {
-	if r.targetExtension != "" {
-		oldPath = strings.TrimSuffix(oldPath, filepath.Ext(oldPath)) + r.targetExtension
+	if r.targetExtension != nil {
+		oldPath = strings.TrimSuffix(oldPath, filepath.Ext(oldPath)) + *r.targetExtension
 	}
 
 	oldPathRelToOldPathDir, err := filepath.Rel(r.oldPathDirectory, oldPath)

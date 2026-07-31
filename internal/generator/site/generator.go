@@ -5,7 +5,9 @@ import (
 	"fmt"
 
 	"github.com/spf13/afero"
+	"github.com/tjnvr/blog/internal/abspath"
 	"github.com/tjnvr/blog/internal/backbone/section"
+	"github.com/tjnvr/blog/internal/hrefpath"
 	mfs "github.com/tjnvr/blog/internal/io/fs"
 	"github.com/tjnvr/blog/internal/relpath"
 )
@@ -16,7 +18,7 @@ type (
 		Validate() error
 	}
 
-	pageGeneratorFactory func(fs afero.Fs, markdownPath, HTMLPath, buildDir string, sectionResolver section.Resolver, pagePathsResolver, assetPathsResolver relpath.Resolver, skipURLValidation bool) PageGenerator
+	pageGeneratorFactory func(fs afero.Fs, markdownPath, HTMLPath string, absolutePathsResolverFactory abspath.ResolverFactory, sectionResolver section.Resolver, hrefPathsResolver hrefpath.Resolver, assetPathsResolver relpath.Resolver, skipURLValidation bool) PageGenerator
 
 	Option func(*Generator)
 )
@@ -24,7 +26,7 @@ type (
 // All files and directories attributes are relative to the project root directory.
 type Config struct {
 	ContentDir    string
-	BuildDir      string
+	PublicDir     string
 	AssetsDir     string
 	AssetsOutDir  string
 	ScriptsDir    string
@@ -34,15 +36,17 @@ type Config struct {
 // Generator is the site generator which allows to generate and validate the site
 type Generator struct {
 	Config
-	skipURLValidation    bool
-	dirCopier            mfs.DirCopier
-	pagesFinder          mfs.FilesFinder
-	sectionResolver      section.Resolver
-	pagePathsResolver    relpath.Resolver
-	assetPathsResolver   relpath.Resolver
-	pageGeneratorFactory pageGeneratorFactory
-	pagesGenerators      []PageGenerator
-	fs                   afero.Fs
+	skipURLValidation            bool
+	dirCopier                    mfs.DirCopier
+	pagesFinder                  mfs.FilesFinder
+	sectionResolver              section.Resolver
+	absolutePathsResolverFactory abspath.ResolverFactory
+	pagePathsResolver            relpath.Resolver
+	hrefPathsResolver            hrefpath.Resolver
+	assetPathsResolver           relpath.Resolver
+	pageGeneratorFactory         pageGeneratorFactory
+	pagesGenerators              []PageGenerator
+	fs                           afero.Fs
 }
 
 // WithSkipURLValidation returns an Option that disables external URL validation.
@@ -54,8 +58,8 @@ func NewGenerator(fs afero.Fs, cfg Config, opts ...Option) (*Generator, error) {
 	if cfg.ContentDir == "" {
 		return nil, errors.New("ContentDir is mandatory")
 	}
-	if cfg.BuildDir == "" {
-		return nil, errors.New("BuildDir is mandatory")
+	if cfg.PublicDir == "" {
+		return nil, errors.New("PublicDir is mandatory")
 	}
 	if cfg.AssetsDir == "" {
 		return nil, errors.New("AssetsDir is mandatory")
@@ -71,15 +75,17 @@ func NewGenerator(fs afero.Fs, cfg Config, opts ...Option) (*Generator, error) {
 	}
 
 	g := &Generator{
-		Config:               cfg,
-		pagesGenerators:      make([]PageGenerator, 0),
-		dirCopier:            mfs.NewDirCopier(fs),
-		pagesFinder:          mfs.NewFilesFinder(fs, mfs.WithExtension(".md")),
-		sectionResolver:      section.NewResolver(fs, cfg.ContentDir),
-		pagePathsResolver:    relpath.NewResolver(cfg.ContentDir, cfg.BuildDir, relpath.WithExtension(".html")),
-		assetPathsResolver:   relpath.NewResolver(cfg.AssetsDir, cfg.AssetsOutDir),
-		pageGeneratorFactory: defaultPageGeneratorFactory,
-		fs:                   fs,
+		Config:                       cfg,
+		pagesGenerators:              make([]PageGenerator, 0),
+		dirCopier:                    mfs.NewDirCopier(fs),
+		pagesFinder:                  mfs.NewFilesFinder(fs, mfs.WithExtension(".md")),
+		sectionResolver:              section.NewResolver(fs, cfg.ContentDir),
+		absolutePathsResolverFactory: abspath.NewResolverFactory(fs, cfg.PublicDir),
+		pagePathsResolver:            relpath.NewResolver(cfg.ContentDir, cfg.PublicDir, relpath.WithExtension("")),
+		hrefPathsResolver:            hrefpath.NewResolver(cfg.ContentDir),
+		assetPathsResolver:           relpath.NewResolver(cfg.AssetsDir, cfg.AssetsOutDir),
+		pageGeneratorFactory:         defaultPageGeneratorFactory,
+		fs:                           fs,
 	}
 
 	for _, opt := range opts {
@@ -98,7 +104,7 @@ func (g *Generator) Generate() error {
 		return fmt.Errorf("CopyDir scripts err: %v", err)
 	}
 
-	if err := g.generatePages(g.assetPathsResolver, g.pagePathsResolver); err != nil {
+	if err := g.generatePages(g.assetPathsResolver, g.pagePathsResolver, g.hrefPathsResolver); err != nil {
 		return fmt.Errorf("failed to generate pages: %w", err)
 	}
 
