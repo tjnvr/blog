@@ -52,7 +52,7 @@ func (g *Generator) generatePages(assetsPathTranslater, linksPathTranslater relp
 func defaultPageGeneratorFactory(fs afero.Fs, sourceMDPath, destinationHTMLPath string, absolutePathsResolverFactory abspath.ResolverFactory, sectionResolver section.Resolver, hrefPathsResolver hrefpath.Resolver, assetPathsResolver relpath.Resolver, skipURLValidation bool) PageGenerator {
 	var (
 		markdownSubstitutions = mdsubstitutions.NewRegistry(sourceMDPath)
-		HTMLSubstitutions     = htmlsubstitutions.NewRegistry(destinationHTMLPath, sourceMDPath, sectionResolver, hrefPathsResolver, assetPathsResolver)
+		HTMLSubstitutions     = htmlsubstitutions.NewRegistry(fs, destinationHTMLPath, sourceMDPath, sectionResolver, hrefPathsResolver, assetPathsResolver)
 		validations           = validation.NewRegistry(destinationHTMLPath, fs, absolutePathsResolverFactory, sectionResolver, hrefPathsResolver, skipURLValidation)
 	)
 
