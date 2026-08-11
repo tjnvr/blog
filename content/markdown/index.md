@@ -1,4 +1,5 @@
 <!-- seq: 1 -->
+<!-- description: Ceci est mon site personnel où je partage mes réflexions. -->
 # Accueil
 
 Ceci est mon site personnel où je partage mes réflexions.

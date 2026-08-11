@@ -4,8 +4,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/spf13/afero"
+
 	"github.com/tjnvr/blog/internal/backbone/section"
 	"github.com/tjnvr/blog/internal/generator/page/html/substitution/content"
+	"github.com/tjnvr/blog/internal/generator/page/html/substitution/description"
 	"github.com/tjnvr/blog/internal/generator/page/html/substitution/navigation"
 	"github.com/tjnvr/blog/internal/generator/page/html/substitution/summary"
 	"github.com/tjnvr/blog/internal/generator/page/html/substitution/title"
@@ -19,11 +22,12 @@ type Registry struct {
 }
 
 // NewRegistry creates a new substitution registry with default substituters
-func NewRegistry(HTMLPath, markdownSourcePath string, sectionResolver section.Resolver, pagesPathResolver hrefpath.Resolver, assetsPathResolver relpath.Resolver) *Registry {
+func NewRegistry(fs afero.Fs, HTMLPath, markdownSourcePath string, sectionResolver section.Resolver, pagesPathResolver hrefpath.Resolver, assetsPathResolver relpath.Resolver) *Registry {
 	return newRegistryWithSubstituters(
 		content.NewSubstituer(HTMLPath, markdownSourcePath, assetsPathResolver, pagesPathResolver),
 		summary.NewSubstituer(),
 		title.NewSubstituer(),
+		description.NewSubstituer(fs, markdownSourcePath),
 		navigation.NewSubstituer(pagesPathResolver, sectionResolver, markdownSourcePath, HTMLPath),
 	)
 }

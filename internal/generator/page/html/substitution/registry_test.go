@@ -23,24 +23,22 @@ func (f fakeSubstituter) Resolve(content string) (string, error) {
 	return f.resolveFunc(content)
 }
 
-// testResolvers builds working section/path resolvers over an empty in-memory
-// "content" directory, so default substituters (e.g. nav) can resolve without
-// error against the "content/source.md" -> "build/output.html" paths used below.
-func testResolvers() (section.Resolver, hrefpath.Resolver, relpath.Resolver) {
+func testResolvers() (afero.Fs, section.Resolver, hrefpath.Resolver, relpath.Resolver) {
 	fs := afero.NewMemMapFs()
 	_ = afero.WriteFile(fs, "content/index.md", []byte("# Home"), 0644)
-	return section.NewResolver(fs, "content"), hrefpath.NewResolver("content"), relpath.NewResolver("content", "build")
+	_ = afero.WriteFile(fs, "content/source.md", []byte("<!-- description: A test description. -->\n# Home"), 0644)
+	return fs, section.NewResolver(fs, "content"), hrefpath.NewResolver("content"), relpath.NewResolver("content", "build")
 }
 
 func TestNewRegistry(t *testing.T) {
-	sectionResolver, hrefResolver, assetResolver := testResolvers()
-	r := NewRegistry("build/output.html", "content/source.md", sectionResolver, hrefResolver, assetResolver)
+	fs, sectionResolver, hrefResolver, assetResolver := testResolvers()
+	r := NewRegistry(fs, "build/output.html", "content/source.md", sectionResolver, hrefResolver, assetResolver)
 	if r == nil {
 		t.Fatal("NewRegistry() returned nil")
 		return
 	}
-	if len(r.substitutions) != 4 {
-		t.Errorf("NewRegistry() should have 4 default substituters, got %d", len(r.substitutions))
+	if len(r.substitutions) != 5 {
+		t.Errorf("NewRegistry() should have 5 default substituters, got %d", len(r.substitutions))
 	}
 }
 
@@ -169,9 +167,9 @@ func TestRegistry_Apply(t *testing.T) {
 }
 
 func TestRegistry_Apply_WithDefaultSubstituters(t *testing.T) {
-	sectionResolver, hrefResolver, assetResolver := testResolvers()
-	r := NewRegistry("build/output.html", "content/source.md", sectionResolver, hrefResolver, assetResolver)
-	template := `<title>{{title}}</title><div>{{navigation}}</div><body>{{content}}</body>`
+	fs, sectionResolver, hrefResolver, assetResolver := testResolvers()
+	r := NewRegistry(fs, "build/output.html", "content/source.md", sectionResolver, hrefResolver, assetResolver)
+	template := `<title>{{title}}</title><meta name="description" content="{{description}}"><div>{{navigation}}</div><body>{{content}}</body>`
 	content := `<h1>Test Title</h1><p>Hello world</p>`
 
 	result, err := r.Apply(template, content)
@@ -188,11 +186,14 @@ func TestRegistry_Apply_WithDefaultSubstituters(t *testing.T) {
 	if !strings.Contains(result, "<nav") {
 		t.Errorf("expected navigation substitution, got %q", result)
 	}
+	if !strings.Contains(result, `<meta name="description" content="A test description.">`) {
+		t.Errorf("expected description substitution, got %q", result)
+	}
 }
 
 func TestRegistry_Apply_SummarySubstitution(t *testing.T) {
-	sectionResolver, hrefResolver, assetResolver := testResolvers()
-	r := NewRegistry("build/output.html", "content/source.md", sectionResolver, hrefResolver, assetResolver)
+	fs, sectionResolver, hrefResolver, assetResolver := testResolvers()
+	r := NewRegistry(fs, "build/output.html", "content/source.md", sectionResolver, hrefResolver, assetResolver)
 	template := `<body>{{content}}</body>`
 	content := `<h1 id="title">Title</h1>` +
 		`<p>{{summary}}</p>` +
