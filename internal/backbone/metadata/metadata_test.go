@@ -52,6 +52,11 @@ func TestMetadata_Extract(t *testing.T) {
 			data: "<!-- seq: first -->\n# Hello",
 			want: Metadata{},
 		},
+		{
+			name: "description",
+			data: "<!-- description: A short summary of the page. -->\n# Hello",
+			want: Metadata{Description: "A short summary of the page."},
+		},
 	}
 
 	for _, tt := range tests {
