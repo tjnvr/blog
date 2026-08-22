@@ -144,7 +144,7 @@ tasks:
       - "{{.IMAGES_DIR}}/**/*.ico"
       - "{{.IMAGES_DIR}}/**/*.avif"
     cmds:
-      - ./{{.BUILD_DIR}}/bin/blog
+      - ./{{.BUILD_DIR}}/bin/blog --skip-url-validation
 
   css:build:
     desc: Build Tailwind CSS

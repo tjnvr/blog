@@ -1,8 +1,6 @@
 @import "tailwindcss";
 @custom-variant dark (&:where(.dark, .dark *));
 @plugin "@tailwindcss/typography";
-@source "./internal/generator/page.html";
-@source "./target/build/**/*.html";
 
 .small-centered {
     display: block;
@@ -63,4 +61,35 @@ h6:hover .heading-anchor {
 .nav-link:hover::after,
 .nav-link.is-active::after {
     transform: scaleX(1);
+}
+
+@layer base {
+  /* 1. Hide list bullets while preserving indentation */
+  .prose ul:has(input[type="checkbox"]) {
+    list-style-type: none !important;
+  }
+
+  .prose li:has(> input[type="checkbox"]) {
+    list-style-type: none !important;
+    padding-left: 0 !important;
+  }
+
+  /* 2. Style the checkbox (Clean neutral gray) */
+  .prose input[type="checkbox"] {
+    @apply rounded border-gray-300 text-gray-700 focus:ring-0 cursor-default mr-2.5 opacity-70 -translate-y-px;
+  }
+
+  /* 3. Strikethrough text when the checkbox is checked */
+  .prose li:has(> input[type="checkbox"]:checked) {
+    color: #9ca3af !important; /* text-gray-400 */
+    text-decoration: line-through !important;
+    text-decoration-color: #d1d5db !important; /* decoration-gray-300 */
+  }
+
+  /* 4. Maintain underline AND strikethrough on links */
+  .prose li:has(> input[type="checkbox"]:checked) a {
+    color: #9ca3af !important;
+    text-decoration: underline line-through !important;
+    text-decoration-color: #d1d5db !important;
+  }
 }
