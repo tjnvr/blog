@@ -1,0 +1,26 @@
+{{- define "listing" -}}
+<div>
+    {{- range $i, $article := . }}
+    {{- if $i }}
+    <hr class="border-gray-200 dark:border-gray-700 mt-3 mb-3">
+    {{- end }}
+    <div class="flex flex-row justify-between gap-4">
+        <div class="min-w-0 flex-1">
+            <p class="mt-0 mb-1 text-[13px] leading-none italic text-gray-400 dark:text-gray-500">
+                {{.PublishedOn}}
+            </p>
+            <a href="{{.HRef}}"
+                class="mb-0 block leading-snug font-medium text-gray-900 no-underline hover:underline dark:text-gray-100">{{.Title}}</a>
+            {{- if .Description }}
+            <p class="mt-0 mb-0 ml-0 mr-0 text-[14px] leading-normal text-gray-600 dark:text-gray-300">{{.Description}}
+            </p>
+            {{- end }}
+        </div>
+        {{- if .ImageSrc }}
+        <img src="{{.ImageSrc}}" alt=""
+            class="mt-0 mb-0 ml-0 mr-0 h-24 w-24 shrink-0 self-start rounded-lg object-cover object-top">
+        {{- end }}
+    </div>
+    {{- end }}
+</div>
+{{- end -}}

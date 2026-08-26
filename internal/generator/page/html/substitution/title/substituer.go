@@ -2,28 +2,27 @@ package title
 
 import (
 	"fmt"
-	"regexp"
+
+	"github.com/tjnvr/blog/internal/backbone/metadata"
 )
 
-// substituter resolves {{title}} placeholder
+// substituter resolves {{title}} placeholder from the page's already-extracted metadata.
 type substituter struct {
+	m metadata.Metadata
 }
 
-func NewSubstituer() substituter {
-	return substituter{}
+func NewSubstituer(m metadata.Metadata) substituter {
+	return substituter{m: m}
 }
 
 func (t substituter) Placeholder() string {
 	return "{{title}}"
 }
 
-func (t substituter) Resolve(content string) (string, error) {
-	// Look for <h1> tag in HTML content, skipping any anchor link inside
-	re := regexp.MustCompile(`<h1[^>]*>([^<]+)(?:<a[^>]*>[^<]*</a>)?</h1>`)
-	match := re.FindSubmatch([]byte(content))
-	if len(match) >= 2 {
-		return string(match[1]), nil
+func (t substituter) Resolve(_ string) (string, error) {
+	if t.m.Title == "" {
+		return "", fmt.Errorf("could not find a page title")
 	}
 
-	return "", fmt.Errorf("could not find a page title")
+	return t.m.Title, nil
 }

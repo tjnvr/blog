@@ -6,42 +6,49 @@ import (
 	"path/filepath"
 
 	"github.com/spf13/afero"
-	htmlsubstitution "github.com/tjnvr/blog/internal/generator/page/html/substitution"
+
+	"github.com/tjnvr/blog/internal/backbone/metadata"
+	"github.com/tjnvr/blog/internal/backbone/section"
+	"github.com/tjnvr/blog/internal/generator/page/html/substitution"
 	"github.com/tjnvr/blog/internal/generator/page/html/validation"
 	"github.com/tjnvr/blog/internal/generator/page/markdown"
-	mdsubstitution "github.com/tjnvr/blog/internal/generator/page/markdown/substitution"
+	"github.com/tjnvr/blog/internal/hrefpath"
+	"github.com/tjnvr/blog/internal/relpath"
 )
 
 //go:embed page.html
 var defaultTemplate string
 
 type Generator struct {
-	htmlPageTemplate      string
-	sourceMDPath          string
-	htmlContentBytes      []byte
-	destinationHTMLPath   string
-	fs                    afero.Fs
-	markdownSubstitutions *mdsubstitution.Registry
-	HTMLSubstitutions     *htmlsubstitution.Registry
-	validations           *validation.Registry
+	htmlPageTemplate    string
+	sourceMDPath        string
+	htmlContentBytes    []byte
+	destinationHTMLPath string
+	fs                  afero.Fs
+	sectionResolver     section.Resolver
+	hrefPathsResolver   hrefpath.Resolver
+	assetPathsResolver  relpath.Resolver
+	validations         *validation.Registry
 }
 
 func NewGenerator(
 	markdownPath string,
 	HTMLPath string,
 	fs afero.Fs,
-	markdownSubstitutions *mdsubstitution.Registry,
-	HTMLSubstitutions *htmlsubstitution.Registry,
+	sectionResolver section.Resolver,
+	hrefPathsResolver hrefpath.Resolver,
+	assetPathsResolver relpath.Resolver,
 	validations *validation.Registry,
 ) *Generator {
 	return &Generator{
-		htmlPageTemplate:      defaultTemplate,
-		sourceMDPath:          markdownPath,
-		destinationHTMLPath:   HTMLPath,
-		fs:                    fs,
-		markdownSubstitutions: markdownSubstitutions,
-		HTMLSubstitutions:     HTMLSubstitutions,
-		validations:           validations,
+		htmlPageTemplate:    defaultTemplate,
+		sourceMDPath:        markdownPath,
+		destinationHTMLPath: HTMLPath,
+		fs:                  fs,
+		sectionResolver:     sectionResolver,
+		hrefPathsResolver:   hrefPathsResolver,
+		assetPathsResolver:  assetPathsResolver,
+		validations:         validations,
 	}
 }
 
@@ -53,22 +60,24 @@ func (g *Generator) Generate() error {
 		return fmt.Errorf("reading %s: %w", g.sourceMDPath, err)
 	}
 
-	// Apply needed substitutions and generation in markdown
-	markdownStringSourceContent, err := g.markdownSubstitutions.Apply(string(markdownSourceContent))
-	if err != nil {
-		return fmt.Errorf("failed to apply markdown substitutions: %w", err)
-	}
-
 	// Convert markdown to HTML
-	htmlContent, err := markdown.NewConverter().Convert([]byte(markdownStringSourceContent))
+	htmlContent, err := markdown.NewConverter().Convert(markdownSourceContent)
 	if err != nil {
 		return fmt.Errorf("failed to convert markdown content: %w", err)
 	}
 
-	// Project result inside the page template
-	htmlContent, err = g.HTMLSubstitutions.Apply(g.htmlPageTemplate, htmlContent)
+	// Project the raw HTML content inside the page template
+	htmlContent, err = substitution.NewRegistry(
+		g.fs,
+		g.destinationHTMLPath,
+		g.sourceMDPath,
+		metadata.Extract(markdownSourceContent),
+		g.sectionResolver,
+		g.hrefPathsResolver,
+		g.assetPathsResolver,
+	).Apply(g.htmlPageTemplate, htmlContent)
 	if err != nil {
-		return fmt.Errorf("failed to project content inside the page template: %w", err)
+		return fmt.Errorf("failed to project content inside the page template for %s: %w", g.sourceMDPath, err)
 	}
 
 	if err := g.fs.MkdirAll(filepath.Dir(g.destinationHTMLPath), 0744); err != nil {

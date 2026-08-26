@@ -270,51 +270,6 @@ func TestSectionResolver_ResolveForFile_ShouldReturnErrorWhenIndexFileMissing(t 
 	assert.ErrorContains(t, err, "afero.ReadFile err")
 }
 
-func TestExtractSectionTitle(t *testing.T) {
-	title := uuid.New().String()
-
-	tests := []struct {
-		name    string
-		content string
-	}{
-		{
-			name:    "heading on the first line",
-			content: "# " + title + "\n\nsome content",
-		},
-		{
-			name:    "heading preceded by other lines",
-			content: "---\ndate: 2026-07-14\n---\n\n# " + title + "\n",
-		},
-		{
-			name:    "heading surrounded by whitespace",
-			content: "#   " + title + "  \n",
-		},
-		{
-			name:    "sub heading before the section heading",
-			content: "## " + uuid.New().String() + "\n\n# " + title + "\n",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// test
-			extractedTitle, err := extractSectionTitle([]byte(tt.content))
-
-			// expect
-			require.NoError(t, err)
-			assert.Equal(t, title, extractedTitle)
-		})
-	}
-}
-
-func TestExtractSectionTitle_ShouldReturnErrorWhenNoHeading(t *testing.T) {
-	// test
-	_, err := extractSectionTitle([]byte("## " + uuid.New().String() + "\n\nsome content"))
-
-	// expect
-	assert.ErrorContains(t, err, "no section title found")
-}
-
 func TestExtractSection_ShouldReturnErrorWhenFileMissing(t *testing.T) {
 	// given
 	homeSectionFile := filepath.Join(uuid.New().String(), "index.md")
