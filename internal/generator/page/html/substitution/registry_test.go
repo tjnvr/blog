@@ -7,6 +7,7 @@ import (
 
 	"github.com/spf13/afero"
 
+	"github.com/tjnvr/blog/internal/backbone/metadata"
 	"github.com/tjnvr/blog/internal/backbone/section"
 	"github.com/tjnvr/blog/internal/hrefpath"
 	"github.com/tjnvr/blog/internal/relpath"
@@ -25,20 +26,20 @@ func (f fakeSubstituter) Resolve(content string) (string, error) {
 
 func testResolvers() (afero.Fs, section.Resolver, hrefpath.Resolver, relpath.Resolver) {
 	fs := afero.NewMemMapFs()
-	_ = afero.WriteFile(fs, "content/index.md", []byte("# Home"), 0644)
-	_ = afero.WriteFile(fs, "content/source.md", []byte("<!-- description: A test description. -->\n# Home"), 0644)
+	_ = afero.WriteFile(fs, "content/index.md", []byte("<!-- creation-date: 2026-01-01 -->\n# Home"), 0644)
+	_ = afero.WriteFile(fs, "content/source.md", []byte("<!-- description: A test description. -->\n# Test Title"), 0644)
 	return fs, section.NewResolver(fs, "content"), hrefpath.NewResolver("content"), relpath.NewResolver("content", "build")
 }
 
 func TestNewRegistry(t *testing.T) {
 	fs, sectionResolver, hrefResolver, assetResolver := testResolvers()
-	r := NewRegistry(fs, "build/output.html", "content/source.md", sectionResolver, hrefResolver, assetResolver)
+	r := NewRegistry(fs, "build/output.html", "content/source.md", metadata.Metadata{}, sectionResolver, hrefResolver, assetResolver)
 	if r == nil {
 		t.Fatal("NewRegistry() returned nil")
 		return
 	}
-	if len(r.substitutions) != 5 {
-		t.Errorf("NewRegistry() should have 5 default substituters, got %d", len(r.substitutions))
+	if len(r.substitutions) != 6 {
+		t.Errorf("NewRegistry() should have 6 default substituters, got %d", len(r.substitutions))
 	}
 }
 
@@ -168,7 +169,8 @@ func TestRegistry_Apply(t *testing.T) {
 
 func TestRegistry_Apply_WithDefaultSubstituters(t *testing.T) {
 	fs, sectionResolver, hrefResolver, assetResolver := testResolvers()
-	r := NewRegistry(fs, "build/output.html", "content/source.md", sectionResolver, hrefResolver, assetResolver)
+	m := metadata.Metadata{Title: "Test Title", Description: "A test description."}
+	r := NewRegistry(fs, "build/output.html", "content/source.md", m, sectionResolver, hrefResolver, assetResolver)
 	template := `<title>{{title}}</title><meta name="description" content="{{description}}"><div>{{navigation}}</div><body>{{content}}</body>`
 	content := `<h1>Test Title</h1><p>Hello world</p>`
 
@@ -193,7 +195,7 @@ func TestRegistry_Apply_WithDefaultSubstituters(t *testing.T) {
 
 func TestRegistry_Apply_SummarySubstitution(t *testing.T) {
 	fs, sectionResolver, hrefResolver, assetResolver := testResolvers()
-	r := NewRegistry(fs, "build/output.html", "content/source.md", sectionResolver, hrefResolver, assetResolver)
+	r := NewRegistry(fs, "build/output.html", "content/source.md", metadata.Metadata{}, sectionResolver, hrefResolver, assetResolver)
 	template := `<body>{{content}}</body>`
 	content := `<h1 id="title">Title</h1>` +
 		`<p>{{summary}}</p>` +

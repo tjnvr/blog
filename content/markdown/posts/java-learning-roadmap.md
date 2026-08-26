@@ -1,4 +1,5 @@
-<!-- creation-date: 2026-06-13 -->
+<!-- creation-date: 2026-08-22 -->
+<!-- description: Une feuille de route actualisée de mon apprentissage du Java où je documente mon avancée et les resources utilisées... -->
 # Mon fil d'Ariane vers la maîtrise de Java
 
 ![Java](../../assets/images/Java.png){.small-centered}

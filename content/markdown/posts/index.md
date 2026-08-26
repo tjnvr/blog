@@ -2,4 +2,4 @@
 <!-- description: Retrouvez mes publications ... -->
 # Articles
 
-{{list-child-articles}}
+{{list-child-pages}}

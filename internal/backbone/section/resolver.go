@@ -91,26 +91,16 @@ func extractSection(fs afero.Fs, homeSectionFile string) (Section, error) {
 		return Section{}, fmt.Errorf("afero.ReadFile err:%v", err)
 	}
 
-	title, err := extractSectionTitle(content)
-	if err != nil {
-		return Section{}, err
+	m := metadata.Extract(content)
+	if m.Title == "" {
+		return Section{}, fmt.Errorf("no section title found")
 	}
 
 	return Section{
 		HomePath:    homeSectionFile,
-		DisplayName: title,
-		Seq:         metadata.Extract(content).Seq,
+		DisplayName: m.Title,
+		Seq:         m.Seq,
 	}, nil
-}
-
-func extractSectionTitle(content []byte) (string, error) {
-	for line := range strings.SplitSeq(string(content), "\n") {
-		if after, ok := strings.CutPrefix(line, "# "); ok {
-			return strings.TrimSpace(after), nil
-		}
-	}
-
-	return "", fmt.Errorf("no section title found")
 }
 
 // compareSections orders sections by ascending Seq, then by display name.
