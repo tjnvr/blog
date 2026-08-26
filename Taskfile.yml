@@ -143,6 +143,8 @@ tasks:
       - "{{.IMAGES_DIR}}/**/*.webp"
       - "{{.IMAGES_DIR}}/**/*.ico"
       - "{{.IMAGES_DIR}}/**/*.avif"
+    generates:
+      - "{{.PUBLIC_DIR}}/index"
     cmds:
       - ./{{.BUILD_DIR}}/bin/blog --skip-url-validation
 
@@ -163,6 +165,15 @@ tasks:
 
   deploy:
     desc: Sync the built site to S3 and invalidate CloudFront
+    deps:
+      - validate
+      - generate
+    preconditions:
+      # generate/build are checksum-cached on their sources and don't check that their
+      # declared outputs still exist, so e.g. `task clean` followed by an unrelated
+      # `task deploy` can otherwise skip regeneration and ship an empty/stale site.
+      - sh: '[ -f "{{.PUBLIC_DIR}}/index" ]'
+        msg: "{{.PUBLIC_DIR}} is missing or incomplete. Run `task --force generate` to rebuild, then retry."
     cmds:
       - |
         if [ -z "$S3_BUCKET" ]; then
