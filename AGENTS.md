@@ -28,4 +28,4 @@
 ## Documentation
 
 * Do not add comments by default. Only add Go doc comments (package docs, exported identifier docs) in core packages. Do not add doc comments in `internal/generator/*` (page and site generation logic).
-* Every generator-owned feature (not something dependencies provide) must be documented in `README.md`, idiomatic and as concise as possible: tables over prose, no redundant explanation.
+* Every generator-owned feature **usable from within markdown content** must be documented in `README.md`, **idiomatic and as concise as possible**: tables over prose, no redundant explanation.

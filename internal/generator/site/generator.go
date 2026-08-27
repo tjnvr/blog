@@ -104,8 +104,13 @@ func (g *Generator) Generate() error {
 		return fmt.Errorf("CopyDir scripts err: %v", err)
 	}
 
-	if err := g.generatePages(g.assetPathsResolver, g.pagePathsResolver, g.hrefPathsResolver); err != nil {
+	entries, err := g.generatePages(g.assetPathsResolver, g.pagePathsResolver, g.hrefPathsResolver)
+	if err != nil {
 		return fmt.Errorf("failed to generate pages: %w", err)
+	}
+
+	if err := g.generateSitemap(entries); err != nil {
+		return fmt.Errorf("failed to generate sitemap: %w", err)
 	}
 
 	return nil

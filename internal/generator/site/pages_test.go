@@ -63,11 +63,42 @@ func TestGeneratePages_RoutesResolversToTheirCorrectRole(t *testing.T) {
 	}
 
 	// test
-	err := g.generatePages(assetsFake, linksFake, hrefFake)
+	entries, err := g.generatePages(assetsFake, linksFake, hrefFake)
 
 	// expect
 	require.NoError(t, err)
 	assert.Equal(t, "links-resolver", capturedHTMLPath, "HTMLPath must come from the file-writing resolver")
 	assert.Equal(t, hrefFake, capturedHrefResolver, "the factory's href slot must receive the href resolver, not the file resolver")
 	assert.Equal(t, assetsFake, capturedAssetResolver)
+	assert.Equal(t, []sitemapEntry{{href: "href-resolver"}}, entries, "sitemap entries must use the href resolver's output")
+}
+
+// TestGeneratePages_CollectsSitemapEntriesFromHrefAndCreationDate guards the
+// data collected for sitemap.xml: every page contributes its real href, and
+// its creation-date metadata becomes the sitemap lastmod when present.
+func TestGeneratePages_CollectsSitemapEntriesFromHrefAndCreationDate(t *testing.T) {
+	// given
+	fs := afero.NewMemMapFs()
+	require.NoError(t, afero.WriteFile(fs, "content/index.md", []byte("# Home\n\n<!-- creation-date: 2024-01-15 -->"), 0644))
+	require.NoError(t, afero.WriteFile(fs, "content/about.md", []byte("# About"), 0644))
+
+	g := &Generator{
+		Config:          Config{ContentDir: "content"},
+		pagesFinder:     mfs.NewFilesFinder(fs, mfs.WithExtension(".md")),
+		pagesGenerators: make([]PageGenerator, 0),
+		fs:              fs,
+		pageGeneratorFactory: func(_ afero.Fs, _, _ string, _ abspath.ResolverFactory, _ section.Resolver, _ hrefpath.Resolver, _ relpath.Resolver, _ bool) PageGenerator {
+			return fakePageGenerator{}
+		},
+	}
+
+	// test
+	entries, err := g.generatePages(fakeRelResolver{}, fakeRelResolver{}, hrefpath.NewResolver("content"))
+
+	// expect
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []sitemapEntry{
+		{href: "/", lastMod: "2024-01-15"},
+		{href: "/about", lastMod: ""},
+	}, entries)
 }

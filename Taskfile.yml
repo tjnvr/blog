@@ -164,18 +164,17 @@ tasks:
       - rm -rf {{.BUILD_DIR}}
 
   deploy:
-    desc: Sync the built site to S3 and invalidate CloudFront
-    deps:
-      - validate
-      - generate
-    preconditions:
-      # generate/build are checksum-cached on their sources and don't check that their
-      # declared outputs still exist, so e.g. `task clean` followed by an unrelated
-      # `task deploy` can otherwise skip regeneration and ship an empty/stale site.
-      - sh: '[ -f "{{.PUBLIC_DIR}}/index" ]'
-        msg: "{{.PUBLIC_DIR}} is missing or incomplete. Run `task --force generate` to rebuild, then retry."
+    desc: Build, validate, and sync the site to S3 (for deploying from your own computer)
     cmds:
-      - |
+    - task: setup
+    - task: validate
+    - task: generate
+    - task: deploy:sync
+
+  deploy:sync:
+    desc: Sync an already-built site to S3 and invalidate CloudFront (used by CI, which already validated and generated in a separate job)
+    cmds:
+    - |
         if [ -z "$S3_BUCKET" ]; then
           echo "S3_BUCKET environment variable is required" >&2
           exit 1
@@ -184,6 +183,14 @@ tasks:
           echo "CLOUDFRONT_DISTRIBUTION_ID environment variable is required" >&2
           exit 1
         fi
+        if [ -z "$BASE_URL" ]; then
+          echo "BASE_URL environment variable is required" >&2
+          exit 1
+        fi
+
+        # sitemap.xml is generated environment-agnostic
+        sed "s|__BASE_URL__|$BASE_URL|g" {{.PUBLIC_DIR}}/sitemap.xml > {{.PUBLIC_DIR}}/sitemap.xml.tmp
+        mv {{.PUBLIC_DIR}}/sitemap.xml.tmp {{.PUBLIC_DIR}}/sitemap.xml
 
         # Files with an extension (assets, css, js): let AWS auto-detect content-type
         aws s3 sync {{.PUBLIC_DIR}}/ "s3://$S3_BUCKET/" --delete --exclude "*" --include "*.*"
