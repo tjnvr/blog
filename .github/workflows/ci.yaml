@@ -76,4 +76,5 @@ jobs:
         env:
           S3_BUCKET: ${{ vars.S3_BUCKET }}
           CLOUDFRONT_DISTRIBUTION_ID: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
-        run: task deploy
+          BASE_URL: ${{ vars.BASE_URL }}
+        run: task deploy:sync

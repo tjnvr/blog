@@ -1,6 +1,7 @@
 package site
 
 import (
+	"encoding/xml"
 	"testing"
 
 	"github.com/spf13/afero"
@@ -62,4 +63,36 @@ func TestNewGenerator_ResolverWiring(t *testing.T) {
 			assert.Equal(t, tt.wantHref, href)
 		})
 	}
+}
+
+// TestGenerate_WritesSitemapWithPlaceholderAndPageHrefs proves sitemap.xml is
+// produced automatically as part of Generate(), with every page's href
+// prefixed by the deploy-time base URL placeholder and lastmod populated
+// only when a page declares creation-date metadata.
+func TestGenerate_WritesSitemapWithPlaceholderAndPageHrefs(t *testing.T) {
+	// given
+	fs := afero.NewMemMapFs()
+	require.NoError(t, afero.WriteFile(fs, "content/index.md", []byte("# Home\n\n<!-- creation-date: 2024-01-15 -->"), 0644))
+	require.NoError(t, afero.WriteFile(fs, "content/about.md", []byte("# About"), 0644))
+	require.NoError(t, fs.MkdirAll("assets", 0744))
+	require.NoError(t, fs.MkdirAll("scripts", 0744))
+
+	g, err := NewGenerator(fs, testConfig(), WithSkipURLValidation(true))
+	require.NoError(t, err)
+
+	// test
+	require.NoError(t, g.Generate())
+
+	// expect
+	sitemapContent, err := afero.ReadFile(fs, "target/sitemap.xml")
+	require.NoError(t, err)
+	assert.Equal(t, xml.Header, string(sitemapContent[:len(xml.Header)]), "sitemap must start with the standard XML prolog")
+
+	var urlset sitemapURLSet
+	require.NoError(t, xml.Unmarshal(sitemapContent[len(xml.Header):], &urlset))
+	assert.Equal(t, sitemapXMLNS, urlset.Xmlns)
+	assert.ElementsMatch(t, []sitemapURL{
+		{Loc: "__BASE_URL__/", LastMod: "2024-01-15"},
+		{Loc: "__BASE_URL__/about", LastMod: ""},
+	}, urlset.URLs)
 }
