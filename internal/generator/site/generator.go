@@ -113,6 +113,10 @@ func (g *Generator) Generate() error {
 		return fmt.Errorf("failed to generate sitemap: %w", err)
 	}
 
+	if err := g.generateRobotsTxt(); err != nil {
+		return fmt.Errorf("failed to generate robots.txt: %w", err)
+	}
+
 	return nil
 }
 

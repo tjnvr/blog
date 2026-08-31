@@ -188,9 +188,12 @@ tasks:
           exit 1
         fi
 
-        # sitemap.xml is generated environment-agnostic
+        # sitemap.xml and robots.txt are generated environment-agnostic
         sed "s|__BASE_URL__|$BASE_URL|g" {{.PUBLIC_DIR}}/sitemap.xml > {{.PUBLIC_DIR}}/sitemap.xml.tmp
         mv {{.PUBLIC_DIR}}/sitemap.xml.tmp {{.PUBLIC_DIR}}/sitemap.xml
+
+        sed "s|__BASE_URL__|$BASE_URL|g" {{.PUBLIC_DIR}}/robots.txt > {{.PUBLIC_DIR}}/robots.txt.tmp
+        mv {{.PUBLIC_DIR}}/robots.txt.tmp {{.PUBLIC_DIR}}/robots.txt
 
         # Files with an extension (assets, css, js): let AWS auto-detect content-type
         aws s3 sync {{.PUBLIC_DIR}}/ "s3://$S3_BUCKET/" --delete --exclude "*" --include "*.*"
