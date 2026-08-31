@@ -96,3 +96,22 @@ func TestGenerate_WritesSitemapWithPlaceholderAndPageHrefs(t *testing.T) {
 		{Loc: "__BASE_URL__/about", LastMod: ""},
 	}, urlset.URLs)
 }
+
+func TestGenerate_WritesRobotsTxt(t *testing.T) {
+	// given
+	fs := afero.NewMemMapFs()
+	require.NoError(t, afero.WriteFile(fs, "content/index.md", []byte("# Home"), 0644))
+	require.NoError(t, fs.MkdirAll("assets", 0744))
+	require.NoError(t, fs.MkdirAll("scripts", 0744))
+
+	g, err := NewGenerator(fs, testConfig(), WithSkipURLValidation(true))
+	require.NoError(t, err)
+
+	// test
+	require.NoError(t, g.Generate())
+
+	// expect
+	content, err := afero.ReadFile(fs, "target/robots.txt")
+	require.NoError(t, err)
+	assert.Equal(t, "User-agent: *\nDisallow:\nSitemap: __BASE_URL__/sitemap.xml", string(content))
+}
