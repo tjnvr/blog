@@ -2,9 +2,9 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
-	"net/http"
-	"time"
+	"os"
 )
 
 func main() {
@@ -15,17 +15,14 @@ func main() {
 		log.Fatal("--url is required")
 	}
 
-	client := &http.Client{Timeout: 10 * time.Second}
-
-	resp, err := client.Get(*url)
+	warnings, err := run(*url)
+	for _, w := range warnings {
+		fmt.Fprintln(os.Stderr, "WARNING:", w)
+	}
 	if err != nil {
-		log.Fatalf("Could not reach %s: %v\n", *url, err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode < 200 || resp.StatusCode >= 400 {
-		log.Fatalf("%s returned HTTP %d\n", *url, resp.StatusCode)
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
 
-	log.Printf("%s is reachable (HTTP %d)\n", *url, resp.StatusCode)
+	log.Printf("%s is valid\n", *url)
 }
