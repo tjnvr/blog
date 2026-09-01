@@ -7,6 +7,8 @@ import (
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/tjnvr/blog/internal/sitemap"
 )
 
 func TestGenerateSitemap_WritesExpectedXML(t *testing.T) {
@@ -27,10 +29,10 @@ func TestGenerateSitemap_WritesExpectedXML(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, xml.Header, string(content[:len(xml.Header)]))
 
-	var urlset sitemapURLSet
+	var urlset sitemap.URLSet
 	require.NoError(t, xml.Unmarshal(content[len(xml.Header):], &urlset))
-	assert.Equal(t, sitemapXMLNS, urlset.Xmlns)
-	assert.Equal(t, []sitemapURL{
+	assert.Equal(t, sitemap.XMLNS, urlset.Xmlns)
+	assert.Equal(t, []sitemap.URL{
 		{Loc: "__BASE_URL__/", LastMod: "2024-01-01"},
 		{Loc: "__BASE_URL__/posts", LastMod: ""},
 	}, urlset.URLs)
@@ -49,7 +51,7 @@ func TestGenerateSitemap_WritesEmptyURLSetWhenNoEntries(t *testing.T) {
 	content, err := afero.ReadFile(fs, "target/sitemap.xml")
 	require.NoError(t, err)
 
-	var urlset sitemapURLSet
+	var urlset sitemap.URLSet
 	require.NoError(t, xml.Unmarshal(content[len(xml.Header):], &urlset))
 	assert.Empty(t, urlset.URLs)
 }

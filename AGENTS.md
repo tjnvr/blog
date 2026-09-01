@@ -6,7 +6,7 @@
 ## Project structure
 
 * `content/markdown/`: page sources, **human-written only**, not agent-written or agent-inspired. No help needed beyond spelling fixes.
-* `internal/`: Go source: core packages vs. `internal/generator/*` (see Core packages).
+* `internal/`: Go source: core packages vs. `internal/generator/*` / `internal/validator` (see Core packages).
 * `styles/`: Tailwind CSS input.
 * `target/build/`: generated output (gitignored).
 
@@ -22,10 +22,10 @@
 
 ## Core packages
 
-* Every `internal/` package except `internal/generator/*`. They hold **only proven, future-proof, documented code**. Extracted from `internal/generator/*` once code earns that status, never preemptively.
+* Every `internal/` package except `internal/generator/*` and `internal/validator` — both executables, not libraries. They hold **only proven, future-proof, documented code**, extracted from those once code earns that status, never preemptively.
 * The surface they expose is deliberate and carefully human-reviewed. **Always ask for human approval before migrating anything here.**
 
 ## Documentation
 
-* Do not add comments by default. Only add Go doc comments (package docs, exported identifier docs) in core packages. Do not add doc comments in `internal/generator/*` (page and site generation logic).
+* Do not add comments by default. Only add Go doc comments (package docs, exported identifier docs) in core packages — not in `internal/generator/*` or `internal/validator`.
 * Every generator-owned feature **usable from within markdown content** must be documented in `README.md`, **idiomatic and as concise as possible**: tables over prose, no redundant explanation.

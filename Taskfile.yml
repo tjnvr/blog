@@ -126,8 +126,8 @@ tasks:
       - "{{.BUILD_DIR}}/bin/validate"
     cmds:
       - mkdir -p {{.BUILD_DIR}}/bin
-      - go build -o {{.BUILD_DIR}}/bin/generate ./internal/generator/main.go
-      - go build -o {{.BUILD_DIR}}/bin/validate ./internal/validator/main.go
+      - go build -o {{.BUILD_DIR}}/bin/generate ./internal/generator
+      - go build -o {{.BUILD_DIR}}/bin/validate ./internal/validator
 
   generate:
     desc: Generate the static site

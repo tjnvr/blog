@@ -6,12 +6,13 @@ import (
 	"path/filepath"
 
 	"github.com/spf13/afero"
+
+	"github.com/tjnvr/blog/internal/sitemap"
 )
 
 const (
 	sitemapFileName           = "sitemap.xml"
 	sitemapBaseURLPlaceholder = "__BASE_URL__"
-	sitemapXMLNS              = "http://www.sitemaps.org/schemas/sitemap/0.9"
 )
 
 type sitemapEntry struct {
@@ -19,21 +20,10 @@ type sitemapEntry struct {
 	lastMod string
 }
 
-type sitemapURLSet struct {
-	XMLName xml.Name     `xml:"urlset"`
-	Xmlns   string       `xml:"xmlns,attr"`
-	URLs    []sitemapURL `xml:"url"`
-}
-
-type sitemapURL struct {
-	Loc     string `xml:"loc"`
-	LastMod string `xml:"lastmod,omitempty"`
-}
-
 func (g *Generator) generateSitemap(entries []sitemapEntry) error {
-	urlset := sitemapURLSet{Xmlns: sitemapXMLNS, URLs: make([]sitemapURL, 0, len(entries))}
+	urlset := sitemap.URLSet{Xmlns: sitemap.XMLNS, URLs: make([]sitemap.URL, 0, len(entries))}
 	for _, e := range entries {
-		urlset.URLs = append(urlset.URLs, sitemapURL{
+		urlset.URLs = append(urlset.URLs, sitemap.URL{
 			Loc:     sitemapBaseURLPlaceholder + e.href,
 			LastMod: e.lastMod,
 		})

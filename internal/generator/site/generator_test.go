@@ -7,6 +7,8 @@ import (
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/tjnvr/blog/internal/sitemap"
 )
 
 func testConfig() Config {
@@ -88,10 +90,10 @@ func TestGenerate_WritesSitemapWithPlaceholderAndPageHrefs(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, xml.Header, string(sitemapContent[:len(xml.Header)]), "sitemap must start with the standard XML prolog")
 
-	var urlset sitemapURLSet
+	var urlset sitemap.URLSet
 	require.NoError(t, xml.Unmarshal(sitemapContent[len(xml.Header):], &urlset))
-	assert.Equal(t, sitemapXMLNS, urlset.Xmlns)
-	assert.ElementsMatch(t, []sitemapURL{
+	assert.Equal(t, sitemap.XMLNS, urlset.Xmlns)
+	assert.ElementsMatch(t, []sitemap.URL{
 		{Loc: "__BASE_URL__/", LastMod: "2024-01-15"},
 		{Loc: "__BASE_URL__/about", LastMod: ""},
 	}, urlset.URLs)
