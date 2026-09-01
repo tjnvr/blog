@@ -1,6 +1,6 @@
 ## Validating changes
 
-* After making changes, run `task --force validate generate`. Iterate until it passes end to end: fix every reported failure and re-run it. Do not consider a change complete until it is green.
+* After making changes, run `task --force go-validate generate`. Iterate until it passes end to end: fix every reported failure and re-run it. Do not consider a change complete until it is green.
 * While iterating on one package, `go test ./internal/<pkg>/... -run TestName` is faster than the full suite.
 
 ## Project structure

@@ -39,7 +39,7 @@ tasks:
     desc: Download Tailwind standalone CLI
     cmds:
       - |
-        if [ -f ./{{.BUILD_DIR}}/bin/tailwindcss ]; then
+        if [ -f {{.BUILD_DIR}}/bin/tailwindcss ]; then
           echo "Tailwind CLI already installed"
         else
           echo "Downloading Tailwind CLI {{.TAILWIND_VERSION}}..."
@@ -55,17 +55,16 @@ tasks:
           else
             BINARY="tailwindcss-linux-x64"
           fi
-          curl -sLO "https://github.com/tailwindlabs/tailwindcss/releases/download/{{.TAILWIND_VERSION}}/$BINARY"
-          chmod +x "$BINARY"
-          mv "$BINARY" ./{{.BUILD_DIR}}/bin/tailwindcss
-          echo "Tailwind CLI installed to ./{{.BUILD_DIR}}/bin/tailwindcss"
+          curl -sL -o {{.BUILD_DIR}}/bin/tailwindcss "https://github.com/tailwindlabs/tailwindcss/releases/download/{{.TAILWIND_VERSION}}/$BINARY"
+          chmod +x {{.BUILD_DIR}}/bin/tailwindcss
+          echo "Tailwind CLI installed to {{.BUILD_DIR}}/bin/tailwindcss"
         fi
 
         # Install typography
         npm install -g @tailwindcss/typography
 
-  validate:
-    desc: Run all validation (fmt, lint, test, build)
+  go-validate:
+    desc: Run all go validation (fmt, lint, test, build)
     cmds:
       - task: fmt:check
       - task: lint
@@ -117,15 +116,18 @@ tasks:
     sources:
       - go.mod
       - go.sum
-      - main.go
+      - ./internal/validator/main.go
+      - ./internal/generator/main.go
       - ./internal/**/*.go
       - ./internal/**/*.html
       - ./internal/generator/page/page.html
     generates:
-      - "{{.BUILD_DIR}}/bin/blog"
+      - "{{.BUILD_DIR}}/bin/generate"
+      - "{{.BUILD_DIR}}/bin/validate"
     cmds:
       - mkdir -p {{.BUILD_DIR}}/bin
-      - go build -o {{.BUILD_DIR}}/bin/blog
+      - go build -o {{.BUILD_DIR}}/bin/generate ./internal/generator/main.go
+      - go build -o {{.BUILD_DIR}}/bin/validate ./internal/validator/main.go
 
   generate:
     desc: Generate the static site
@@ -133,7 +135,7 @@ tasks:
       - build
       - css:build
     sources:
-      - "./{{.BUILD_DIR}}/bin/blog"
+      - "{{.BUILD_DIR}}/bin/generate"
       - "{{.CONTENT_DIR}}/**/*.md"
       - "{{.IMAGES_DIR}}/**/*.png"
       - "{{.IMAGES_DIR}}/**/*.jpg"
@@ -146,7 +148,7 @@ tasks:
     generates:
       - "{{.PUBLIC_DIR}}/index"
     cmds:
-      - ./{{.BUILD_DIR}}/bin/blog --skip-url-validation
+      - ./{{.BUILD_DIR}}/bin/generate --skip-url-validation
 
   css:build:
     desc: Build Tailwind CSS
@@ -167,9 +169,10 @@ tasks:
     desc: Build, validate, and sync the site to S3 (for deploying from your own computer)
     cmds:
     - task: setup
-    - task: validate
+    - task: go-validate
     - task: generate
     - task: deploy:sync
+    - task: validate
 
   deploy:sync:
     desc: Sync an already-built site to S3 and invalidate CloudFront (used by CI, which already validated and generated in a separate job)
@@ -232,3 +235,14 @@ tasks:
     deps:
       - task: generate
     cmd: browser-sync reload
+
+  validate:
+    desc: Validate the just-deployed site at $BASE_URL
+    cmds:
+        - |
+            if [ -z "$BASE_URL" ]; then
+                echo "BASE_URL environment variable is required" >&2
+                exit 1
+            fi
+
+            ./{{.BUILD_DIR}}/bin/validate --url "$BASE_URL"

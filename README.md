@@ -15,15 +15,17 @@ A static site generator built in Go.
 task setup
 
 # Validate the Go generator
-task validate
+task go-validate
 
-# Generate and validate the site
+# Generate the site
 task generate
 
 # Generate the site and serve it locally
 task serve &
-
 task dev
+
+# Validate the site served locally
+BASE_URL=http://localhost:3000/ task validate
 ```
 
 ## Write content
