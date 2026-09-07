@@ -22,7 +22,7 @@ L'idée de cette étape est de suivre la documentation officielle tout en [réal
   - [x] [Object-Oriented Programming Concepts](https://docs.oracle.com/javase/tutorial/java/concepts/index.html)
   - [x] [Language Basics](https://docs.oracle.com/javase/tutorial/java/nutsandbolts/index.html)
   - [ ] [Classes and Objects](https://docs.oracle.com/javase/tutorial/java/javaOO/index.html)
-  - [ ] [Annotations](https://docs.oracle.com/javase/tutorial/java/annotations/index.html)
+  - [x] [Annotations](https://docs.oracle.com/javase/tutorial/java/annotations/index.html)
   - [ ] [Interfaces and Inheritance](https://docs.oracle.com/javase/tutorial/java/IandI/index.html)
   - [ ] [Numbers and Strings](https://docs.oracle.com/javase/tutorial/java/data/index.html)
   - [ ] [L'intro sur les Generics ](https://docs.oracle.com/javase/tutorial/java/generics/index.html) et la [section plus avancée](https://docs.oracle.com/javase/tutorial/extra/generics/index.html)
