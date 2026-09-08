@@ -14,11 +14,11 @@ Ceci est mon fil d'Ariane pour m'y retrouver et documenter mon apprentissage. [^
 
 _Liste mise à jour en fonction de l'avancement._
 
-### Syntaxe et Concepts
+### Familiarisation: survol des concepts théoriques
 
 L'idée de cette étape est de suivre la documentation officielle tout en [réalisant les exercices](https://github.com/tjnvr/java-learning).
 
-- [ ] Couche théorique du langage : étudier le site [The Java™ Tutorials](https://docs.oracle.com/javase/tutorial/index.html)
+- [ ] Fonctionnalités du langage : [The Java™ Tutorials](https://docs.oracle.com/javase/tutorial/index.html)
   - [x] [Object-Oriented Programming Concepts](https://docs.oracle.com/javase/tutorial/java/concepts/index.html)
   - [x] [Language Basics](https://docs.oracle.com/javase/tutorial/java/nutsandbolts/index.html)
   - [ ] [Classes and Objects](https://docs.oracle.com/javase/tutorial/java/javaOO/index.html)
@@ -36,9 +36,12 @@ L'idée de cette étape est de suivre la documentation officielle tout en [réal
   - [ ] [Packaging Programs in JAR Files](https://docs.oracle.com/javase/tutorial/deployment/jar/index.html)
   - [ ] [Custom Networking](https://docs.oracle.com/javase/tutorial/networking/TOC.html)
   - [ ] [The Reflection API](https://docs.oracle.com/javase/tutorial/reflect/index.html)
-- [ ] Faire le tutorial Maven [Apache Maven Tutorial](https://www.baeldung.com/maven)
+- [ ] Gestion des automatisations avec Maven
+  - [ ] [Apache Maven Tutorial](https://www.baeldung.com/maven)
+- [ ] Génération automatique du _boilerplate_ avec Lombok
+  - [ ] [Lombok Features](https://projectlombok.org/features/)
 
-### Approfondir la théorie
+### Approfondissements théoriques
 
 - [ ] Lire le livre [Effective Java](https://www.oreilly.com/library/view/effective-java-3rd/9780134686097/) pour écrire un code idiomatique et élégant.
 ![Java](../../assets/images/effective-java.jpg)
