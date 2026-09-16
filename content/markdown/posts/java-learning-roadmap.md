@@ -22,7 +22,7 @@ L'idée de cette étape est de suivre la documentation officielle tout en [réal
   - [x] [Object-Oriented Programming Concepts](https://docs.oracle.com/javase/tutorial/java/concepts/index.html)
   - [x] [Language Basics](https://docs.oracle.com/javase/tutorial/java/nutsandbolts/index.html)
   - [ ] [Classes and Objects](https://docs.oracle.com/javase/tutorial/java/javaOO/index.html)
-  - [ ] [Annotations](https://docs.oracle.com/javase/tutorial/java/annotations/index.html)
+  - [x] [Annotations](https://docs.oracle.com/javase/tutorial/java/annotations/index.html)
   - [ ] [Interfaces and Inheritance](https://docs.oracle.com/javase/tutorial/java/IandI/index.html)
   - [ ] [Numbers and Strings](https://docs.oracle.com/javase/tutorial/java/data/index.html)
   - [ ] [L'intro sur les Generics ](https://docs.oracle.com/javase/tutorial/java/generics/index.html) et la [section plus avancée](https://docs.oracle.com/javase/tutorial/extra/generics/index.html)
@@ -36,9 +36,15 @@ L'idée de cette étape est de suivre la documentation officielle tout en [réal
   - [ ] [Packaging Programs in JAR Files](https://docs.oracle.com/javase/tutorial/deployment/jar/index.html)
   - [ ] [Custom Networking](https://docs.oracle.com/javase/tutorial/networking/TOC.html)
   - [ ] [The Reflection API](https://docs.oracle.com/javase/tutorial/reflect/index.html)
-- [ ] Faire le tutorial Maven [Apache Maven Tutorial](https://www.baeldung.com/maven)
+- [ ] Tests logiciels
+    - [ ] [Écrire des tests](https://docs.junit.org/6.1.3/writing-tests/intro.html)
+    - [ ] [Lancer des tests](https://docs.junit.org/6.1.3/running-tests/intro.html)
+- [ ] Automatisations des constructions avec Maven
+  - [ ] Faire le tutorial Maven [Apache Maven Tutorial](https://www.baeldung.com/maven)
 
 ### Approfondir la théorie
+
+Cette partie se fera en parallèle de la partie [Pratiquer](#pratiquer)
 
 - [ ] Lire le livre [Effective Java](https://www.oreilly.com/library/view/effective-java-3rd/9780134686097/) pour écrire un code idiomatique et élégant.
 ![Java](../../assets/images/effective-java.jpg)
