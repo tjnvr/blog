@@ -4,7 +4,7 @@ A static site generator built in Go.
 
 ## Prerequisites
 
-* Go 1.25+
+* Go 1.26+
 * [Task](https://taskfile.dev/)
 * [browser-sync](https://browsersync.io/) (optional, for `dev` live reload)
 
