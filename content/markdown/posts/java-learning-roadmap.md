@@ -21,7 +21,7 @@ L'idée de cette étape est de suivre la documentation officielle tout en [réal
 - [ ] Couche théorique du langage : étudier le site [The Java™ Tutorials](https://docs.oracle.com/javase/tutorial/index.html)
   - [x] [Object-Oriented Programming Concepts](https://docs.oracle.com/javase/tutorial/java/concepts/index.html)
   - [x] [Language Basics](https://docs.oracle.com/javase/tutorial/java/nutsandbolts/index.html)
-  - [ ] [Classes and Objects](https://docs.oracle.com/javase/tutorial/java/javaOO/index.html)
+  - [x] [Classes and Objects](https://docs.oracle.com/javase/tutorial/java/javaOO/index.html)
   - [x] [Annotations](https://docs.oracle.com/javase/tutorial/java/annotations/index.html)
   - [ ] [Interfaces and Inheritance](https://docs.oracle.com/javase/tutorial/java/IandI/index.html)
   - [ ] [Numbers and Strings](https://docs.oracle.com/javase/tutorial/java/data/index.html)
