@@ -4,7 +4,7 @@
 
 ![Java](../../assets/images/Java.png){.small-centered}
 
-Mon équipe originelle s'étant recomposée, je suis amené à travailler sur un périmètre additionel dans ce nouvel idiome. Il m'incombe d'en saisir les nuances et la richesse afin de le manipuler avec finesse et précision. 
+Mon équipe originelle s'étant recomposée début 2025, je suis amené à travailler sur un périmètre additionel dans ce nouvel idiome. Il m'incombe d'en saisir les nuances et la richesse afin de le manipuler avec finesse et précision. 
 
 Ceci est mon fil d'Ariane pour m'y retrouver et documenter mon apprentissage. [^1]
 
@@ -25,8 +25,8 @@ L'idée de cette étape est de suivre la documentation officielle tout en [réal
   - [x] [Annotations](https://docs.oracle.com/javase/tutorial/java/annotations/index.html)
   - [x] [Interfaces and Inheritance](https://docs.oracle.com/javase/tutorial/java/IandI/index.html)
   - [x] [Numbers and Strings](https://docs.oracle.com/javase/tutorial/java/data/index.html)
-  - [ ] [L'intro sur les Generics ](https://docs.oracle.com/javase/tutorial/java/generics/index.html) et la [section plus avancée](https://docs.oracle.com/javase/tutorial/extra/generics/index.html)
-  - [ ] [Packages](https://docs.oracle.com/javase/tutorial/java/package/index.html)
+  - [x] [L'intro sur les Generics ](https://docs.oracle.com/javase/tutorial/java/generics/index.html) et la [section plus avancée](https://docs.oracle.com/javase/tutorial/extra/generics/index.html)
+  - [x] [Packages](https://docs.oracle.com/javase/tutorial/java/package/index.html) 
   - [ ] [Exceptions](https://docs.oracle.com/javase/tutorial/essential/exceptions/index.html)
   - [ ] [Basic I/O](https://docs.oracle.com/javase/tutorial/essential/io/index.html)
   - [ ] [Concurrency](https://docs.oracle.com/javase/tutorial/essential/concurrency/index.html)
