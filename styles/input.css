@@ -8,6 +8,12 @@
     margin-inline: auto;
 }
 
+.prose figcaption {
+    font-size: 0.75rem;
+    font-style: italic;
+    text-align: center;
+}
+
 .prose nav ul {
     margin-top: 0;
     margin-bottom: 0;

@@ -41,6 +41,7 @@ BASE_URL=http://localhost:3000/ task validate
 | `{{summary}}` | any page | Table of contents from the page's headings. | `{{summary}}` |
 | `{{list-child-pages}}` | `index.md` page | Vertical listing of sibling `.md` pages:  date, title, summary, optional thumbnail. | `{{list-child-pages}}` |
 | `{.small-centered}` | any page | Displays the image small and centered. | `![alt](img.png){.small-centered}` |
+| `{title="..."}` | fenced code block | Caption below the code block. | ` ```sh {title="Build"} ` |
 
 ### Page metadata
 
