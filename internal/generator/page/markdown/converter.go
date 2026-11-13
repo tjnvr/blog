@@ -26,11 +26,13 @@ func NewConverter() *Converter {
 				parser.WithAutoHeadingID(),
 				parser.WithASTTransformers(
 					util.Prioritized(&ImageAttributeTransformer{}, 100),
+					util.Prioritized(&CodeFigureTransformer{}, 100),
 				),
 			),
 			goldmark.WithRendererOptions(
 				renderer.WithNodeRenderers(
 					util.Prioritized(&HeadingRenderer{}, 100),
+					util.Prioritized(&CodeFigureRenderer{}, 100),
 				),
 			),
 		),
