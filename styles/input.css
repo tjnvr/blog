@@ -2,6 +2,10 @@
 @custom-variant dark (&:where(.dark, .dark *));
 @plugin "@tailwindcss/typography";
 
+html {
+    scrollbar-gutter: stable;
+}
+
 .small-centered {
     display: block;
     max-width: 20rem;
