@@ -28,7 +28,7 @@ L'idée de cette étape est de suivre la documentation officielle tout en [réal
   - [x] [L'intro sur les Generics ](https://docs.oracle.com/javase/tutorial/java/generics/index.html) et la [section plus avancée](https://docs.oracle.com/javase/tutorial/extra/generics/index.html)
   - [x] [Packages](https://docs.oracle.com/javase/tutorial/java/package/index.html) 
   - [x] [Exceptions](https://docs.oracle.com/javase/tutorial/essential/exceptions/index.html)
-  - [ ] [Basic I/O](https://docs.oracle.com/javase/tutorial/essential/io/index.html)
+  - [x] [Basic I/O](https://docs.oracle.com/javase/tutorial/essential/io/index.html)
   - [ ] [Concurrency](https://docs.oracle.com/javase/tutorial/essential/concurrency/index.html)
   - [ ] [The Platform Environment](https://docs.oracle.com/javase/tutorial/essential/environment/index.html)
   - [ ] [Collections](https://docs.oracle.com/javase/tutorial/collections/index.html)
